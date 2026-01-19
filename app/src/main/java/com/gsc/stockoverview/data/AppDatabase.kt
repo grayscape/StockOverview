@@ -5,10 +5,12 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.gsc.stockoverview.data.dao.OverseasTradingLogRawDao
+import com.gsc.stockoverview.data.dao.StockDao
 import com.gsc.stockoverview.data.dao.TradingLogRawDao
 import com.gsc.stockoverview.data.dao.TransactionDao
 import com.gsc.stockoverview.data.dao.TransactionRawDao
 import com.gsc.stockoverview.data.entity.OverseasTradingLogRawEntity
+import com.gsc.stockoverview.data.entity.StockEntity
 import com.gsc.stockoverview.data.entity.TradingLogRawEntity
 import com.gsc.stockoverview.data.entity.TransactionEntity
 import com.gsc.stockoverview.data.entity.TransactionRawEntity
@@ -18,9 +20,10 @@ import com.gsc.stockoverview.data.entity.TransactionRawEntity
         TransactionRawEntity::class,
         TradingLogRawEntity::class,
         OverseasTradingLogRawEntity::class,
-        TransactionEntity::class
+        TransactionEntity::class,
+        StockEntity::class
     ],
-    version = 8, // Incremented to 8: Added transaction_date and transaction_name to TransactionRawEntity
+    version = 9, // Incremented to 9: Added StockEntity
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -28,6 +31,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun tradingLogRawDao(): TradingLogRawDao
     abstract fun overseasTradingLogRawDao(): OverseasTradingLogRawDao
     abstract fun transactionDao(): TransactionDao
+    abstract fun stockDao(): StockDao
 
     companion object {
         @Volatile

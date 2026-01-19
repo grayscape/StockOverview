@@ -47,7 +47,7 @@ class TransactionRawViewModel(
     )
 
     private val stockCorrectionTypes = listOf(
-        "주식매도출고", "주식매수입고", "해외주식매도출고", "해외주식매수입고", "금현물매수입고"
+        "주식매도출고", "주식매수입고", "해외주식매도출고", "해외주식매수입고", "금현물매수입고", "ETF/상장클래스 분배금입금"
     )
 
     fun importTransactionRawList(uri: Uri, onResult: (Int) -> Unit) {

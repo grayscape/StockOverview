@@ -4,7 +4,9 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.gsc.stockoverview.data.api.StockApiService
 import com.gsc.stockoverview.data.entity.TradingLogRawEntity
+import com.gsc.stockoverview.data.repository.StockRepository
 import com.gsc.stockoverview.data.repository.TradingLogRawRepository
 import com.gsc.stockoverview.utils.ExcelReader
 import kotlinx.coroutines.Dispatchers
@@ -14,9 +16,11 @@ import kotlinx.coroutines.withContext
 
 class TradingLogRawViewModel(
     private val repository: TradingLogRawRepository,
+    private val stockRepository: StockRepository,
     private val excelReader: ExcelReader
 ) : ViewModel() {
 
+    private val stockApiService = StockApiService()
     val tradingLogRawList: Flow<List<TradingLogRawEntity>> = repository.allTradingLogRawList
 
     fun importTradingLogRawList(uri: Uri, onResult: (Int) -> Unit) {
@@ -27,8 +31,21 @@ class TradingLogRawViewModel(
                 }
             }
             if (data.isNotEmpty()) {
-                repository.deleteAll()
-                repository.insertAll(data)
+                withContext(Dispatchers.IO) {
+                    repository.deleteAll()
+                    repository.insertAll(data)
+                    
+                    // Register stock if not exists
+                    data.map { it.stockName }.distinct().forEach { stockName ->
+                        val existingStock = stockRepository.getStockByName(stockName)
+                        if (existingStock == null) {
+                            val stockInfo = stockApiService.fetchStockInfo(stockName)
+                            if (stockInfo != null) {
+                                stockRepository.insertStock(stockInfo)
+                            }
+                        }
+                    }
+                }
                 onResult(data.size)
             }
         }
@@ -54,12 +71,13 @@ class TradingLogRawViewModel(
 
 class TradingLogRawViewModelFactory(
     private val repository: TradingLogRawRepository,
+    private val stockRepository: StockRepository,
     private val excelReader: ExcelReader
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(TradingLogRawViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return TradingLogRawViewModel(repository, excelReader) as T
+            return TradingLogRawViewModel(repository, stockRepository, excelReader) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

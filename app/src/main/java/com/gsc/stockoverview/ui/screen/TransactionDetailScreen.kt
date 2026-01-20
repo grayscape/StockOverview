@@ -15,6 +15,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.gsc.stockoverview.data.AppDatabase
 import com.gsc.stockoverview.data.repository.OverseasTradingLogRawRepository
+import com.gsc.stockoverview.data.repository.StockRepository
 import com.gsc.stockoverview.data.repository.TradingLogRawRepository
 import com.gsc.stockoverview.data.repository.TransactionRawRepository
 import com.gsc.stockoverview.data.repository.TransactionRepository
@@ -49,6 +50,7 @@ fun TransactionDetailScreen(onOpenDrawer: () -> Unit) {
     val tradingLogRawViewModel: TradingLogRawViewModel = viewModel(
         factory = TradingLogRawViewModelFactory(
             TradingLogRawRepository(database.tradingLogRawDao()),
+            StockRepository(database.stockDao()),
             excelReader
         )
     )
@@ -64,7 +66,7 @@ fun TransactionDetailScreen(onOpenDrawer: () -> Unit) {
     ) { uri: Uri? ->
         uri?.let {
             tradingLogRawViewModel.importTradingLogRawList(it) { tradingCount ->
-                Toast.makeText(context, "매매일지 ${tradingCount}건 로드 완료", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, "매매일지 ${tradingCount}건 로드 및 종목 정보 확인 완료", Toast.LENGTH_SHORT).show()
                 
                 overseasTradingLogRawViewModel.importOverseasTradingLogRawList(it) { overseasCount ->
                     Toast.makeText(context, "해외매매일지 ${overseasCount}건 로드 완료", Toast.LENGTH_SHORT).show()

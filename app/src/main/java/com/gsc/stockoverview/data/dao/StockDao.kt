@@ -15,6 +15,9 @@ interface StockDao {
     @Query("SELECT * FROM stock WHERE stock_code = :stockCode")
     suspend fun getStockByCode(stockCode: String): StockEntity?
 
+    @Query("SELECT * FROM stock WHERE stock_name = :stockName LIMIT 1")
+    suspend fun getStockByName(stockName: String): StockEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertStock(stock: StockEntity)
 

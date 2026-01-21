@@ -88,6 +88,13 @@ class TransactionRawViewModel(
 
                 val filteredTransactions = correctedRawData.filter { it.type in typeMapping.keys }
                     .map { raw ->
+                        val isOverseas = raw.type.contains("해외") || raw.type.contains("외화")
+                        val finalAmount = if (isOverseas && raw.foreignAmount != 0.0) {
+                            raw.foreignAmount
+                        } else {
+                            raw.amount.toDouble()
+                        }
+
                         TransactionEntity(
                             account = raw.account,
                             tradeDate = raw.tradeDate,
@@ -98,7 +105,7 @@ class TransactionRawViewModel(
                             quantity = raw.quantity,
                             fee = raw.fee,
                             tax = raw.tax,
-                            amount = raw.amount,
+                            amount = finalAmount,
                             profitLoss = 0L,
                             yield = 0.0,
                             exchangeRate = 0.0,

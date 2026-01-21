@@ -37,7 +37,7 @@ data class TransactionEntity(
     val tax: Long,                  // 세금
 
     @ColumnInfo(name = "amount")
-    val amount: Long,               // 거래금액
+    val amount: Double,             // 거래금액
 
     @ColumnInfo(name = "profit_loss")
     val profitLoss: Long,           // 손익금액

@@ -56,7 +56,7 @@ fun TransactionScreen(onOpenDrawer: () -> Unit) {
                         item.quantity.toString(),
                         formatLong(item.fee),
                         formatLong(item.tax),
-                        formatLong(item.amount),
+                        formatDouble(item.amount),
                         formatLong(item.profitLoss),
                         "${item.yield}%",
                         formatDouble(item.exchangeRate),

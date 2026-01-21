@@ -9,13 +9,16 @@ import java.net.URLEncoder
 
 class StockApiService {
     private val apiKey = "d4f59a5b124cecd58b7cc87eb2bc7f4317ba658b647dc379ad0983ea2edf0709"
-    private val baseUrl = "http://apis.data.go.kr/1160100/service/GetStockSecuritiesInfoService/getStockPriceInfo"
+    private val baseUrl = "https://apis.data.go.kr/1160100/service/GetStockSecuritiesInfoService/getStockPriceInfo"
 
     fun fetchStockInfo(stockName: String): StockEntity? {
         var connection: HttpURLConnection? = null
         return try {
             val urlString = "$baseUrl?serviceKey=$apiKey&resultType=json&itmsNm=${URLEncoder.encode(stockName, "UTF-8")}&numOfRows=1"
             val url = URL(urlString)
+
+            Log.d("StockApiService", urlString)
+
             connection = url.openConnection() as HttpURLConnection
             connection.requestMethod = "GET"
             connection.connectTimeout = 5000

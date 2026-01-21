@@ -23,7 +23,7 @@ import com.gsc.stockoverview.data.entity.TransactionRawEntity
         TransactionEntity::class,
         StockEntity::class
     ],
-    version = 9, // Incremented to 9: Added StockEntity
+    version = 10, // Incremented to 10: Changed TransactionEntity.amount type to Double
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

@@ -89,10 +89,43 @@ class TransactionRawViewModel(
                 val filteredTransactions = correctedRawData.filter { it.type in typeMapping.keys }
                     .map { raw ->
                         val isOverseas = raw.type.contains("해외") || raw.type.contains("외화")
-                        val finalAmount = if (isOverseas && raw.foreignAmount != 0.0) {
+                        var exchangeRate = 0.0
+                        var finalAmount = if (isOverseas && raw.foreignAmount != 0.0) {
                             raw.foreignAmount
                         } else {
                             raw.amount.toDouble()
+                        }
+                        var finalPrice = raw.price
+
+                        // 해외주식매수입고 시 환율 계산 로직 보강
+                        if (raw.type == "해외주식매수입고") {
+                            // 같은 날짜, 같은 계좌의 환전 및 선환전 관련 내역을 모두 취합
+                            val relatedExchanges = correctedRawData.filter {
+                                it.account == raw.account && it.transactionDate == raw.transactionDate
+                            }
+
+                            // 1. 원화 지출액 계산: 외화매수원화출금 + 선환전차액출금 - 선환전차액입금
+                            val wonWithdrawal = relatedExchanges.filter { it.type == "외화매수원화출금" }.sumOf { it.amount }
+                            val diffWithdrawal = relatedExchanges.filter { it.type == "선환전차액출금" }.sumOf { it.amount }
+                            val diffDeposit = relatedExchanges.filter { it.type == "선환전차액입금" }.sumOf { it.amount }
+
+                            val totalWonSpent = (wonWithdrawal + diffWithdrawal - diffDeposit).toDouble()
+
+                            // 2. 외화 입금액 계산
+                            val foreignDeposit = relatedExchanges.filter { it.type == "외화매수외화입금" }.sumOf { it.foreignDWAmount }
+
+                            // 3. 외화 예수금 잔액 확인
+                            // 실제 환전 시점의 '외화예수금(foreignBalance)' 값을 가져옵니다.
+                            val lastForeignBalance = relatedExchanges.filter { it.type == "외화매수외화입금" }
+                                .lastOrNull()?.foreignBalance ?: 0.0
+
+                            if (totalWonSpent > 0 && foreignDeposit > 0.0) {
+                                exchangeRate = totalWonSpent / foreignDeposit
+                                finalAmount = raw.foreignAmount * exchangeRate
+                                finalPrice = raw.price * exchangeRate
+                            }
+                        } else if (isOverseas && raw.foreignAmount != 0.0) {
+                            // 매도나 배당 시에도 필요하다면 해당 일자의 환전 내역을 추적하도록 확장 가능
                         }
 
                         TransactionEntity(
@@ -101,14 +134,14 @@ class TransactionRawViewModel(
                             type = typeMapping[raw.type] ?: raw.type,
                             typeDetail = raw.type,
                             stockName = raw.stockName,
-                            price = raw.price,
+                            price = finalPrice,
                             quantity = raw.quantity,
                             fee = raw.fee,
                             tax = raw.tax,
                             amount = finalAmount,
                             profitLoss = 0L,
                             yield = 0.0,
-                            exchangeRate = 0.0,
+                            exchangeRate = exchangeRate,
                             exchangeProfitLoss = 0L
                         )
                     }

@@ -9,6 +9,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.gsc.stockoverview.data.AppDatabase
+import com.gsc.stockoverview.data.repository.OverseasTradingLogRawRepository
+import com.gsc.stockoverview.data.repository.TradingLogRawRepository
+import com.gsc.stockoverview.data.repository.TransactionRawRepository
 import com.gsc.stockoverview.data.repository.TransactionRepository
 import com.gsc.stockoverview.ui.components.StockTable
 import com.gsc.stockoverview.ui.components.StockTopAppBar
@@ -25,7 +28,10 @@ fun TransactionScreen(onOpenDrawer: () -> Unit) {
 
     val viewModel: TransactionViewModel = viewModel(
         factory = TransactionViewModelFactory(
-            TransactionRepository(database.transactionDao())
+            repository = TransactionRepository(database.transactionDao()),
+            transactionRawRepository = TransactionRawRepository(database.transactionRawDao()),
+            tradingLogRawRepository = TradingLogRawRepository(database.tradingLogRawDao()),
+            overseasTradingLogRawRepository = OverseasTradingLogRawRepository(database.overseasTradingLogRawDao())
         )
     )
 

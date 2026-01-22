@@ -30,6 +30,8 @@ import com.gsc.stockoverview.ui.viewmodel.TradingLogRawViewModel
 import com.gsc.stockoverview.ui.viewmodel.TradingLogRawViewModelFactory
 import com.gsc.stockoverview.ui.viewmodel.TransactionRawViewModel
 import com.gsc.stockoverview.ui.viewmodel.TransactionRawViewModelFactory
+import com.gsc.stockoverview.ui.viewmodel.TransactionViewModel
+import com.gsc.stockoverview.ui.viewmodel.TransactionViewModelFactory
 import com.gsc.stockoverview.utils.ExcelReader
 
 @Composable
@@ -38,26 +40,29 @@ fun TransactionDetailScreen(onOpenDrawer: () -> Unit) {
     val database = remember { AppDatabase.getDatabase(context) }
     val excelReader = remember { ExcelReader(context) }
 
+    // Repository 인스턴스들
+    val transactionRepo = remember { TransactionRepository(database.transactionDao()) }
+    val transactionRawRepo = remember { TransactionRawRepository(database.transactionRawDao()) }
+    val tradingLogRawRepo = remember { TradingLogRawRepository(database.tradingLogRawDao()) }
+    val overseasTradingLogRawRepo = remember { OverseasTradingLogRawRepository(database.overseasTradingLogRawDao()) }
+    val stockRepo = remember { StockRepository(database.stockDao()) }
+
+    // ViewModel 인스턴스들
     val transactionRawViewModel: TransactionRawViewModel = viewModel(
-        factory = TransactionRawViewModelFactory(
-            TransactionRawRepository(database.transactionRawDao()),
-            TransactionRepository(database.transactionDao()),
-            TradingLogRawRepository(database.tradingLogRawDao()),
-            OverseasTradingLogRawRepository(database.overseasTradingLogRawDao()),
-            excelReader
-        )
+        factory = TransactionRawViewModelFactory(transactionRawRepo, excelReader)
     )
     val tradingLogRawViewModel: TradingLogRawViewModel = viewModel(
-        factory = TradingLogRawViewModelFactory(
-            TradingLogRawRepository(database.tradingLogRawDao()),
-            StockRepository(database.stockDao()),
-            excelReader
-        )
+        factory = TradingLogRawViewModelFactory(tradingLogRawRepo, stockRepo, excelReader)
     )
     val overseasTradingLogRawViewModel: OverseasTradingLogRawViewModel = viewModel(
-        factory = OverseasTradingLogRawViewModelFactory(
-            OverseasTradingLogRawRepository(database.overseasTradingLogRawDao()),
-            excelReader
+        factory = OverseasTradingLogRawViewModelFactory(overseasTradingLogRawRepo, excelReader)
+    )
+    val transactionViewModel: TransactionViewModel = viewModel(
+        factory = TransactionViewModelFactory(
+            transactionRepo,
+            transactionRawRepo,
+            tradingLogRawRepo,
+            overseasTradingLogRawRepo
         )
     )
 
@@ -72,7 +77,12 @@ fun TransactionDetailScreen(onOpenDrawer: () -> Unit) {
                     Toast.makeText(context, "해외매매일지 ${overseasCount}건 로드 완료", Toast.LENGTH_SHORT).show()
                     
                     transactionRawViewModel.importTransactionRawList(it) { transCount ->
-                        Toast.makeText(context, "전체거래내역 ${transCount}건 로드 및 종목명 교정 완료", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "전체거래내역 ${transCount}건 로드 완료", Toast.LENGTH_SHORT).show()
+                        
+                        // 모든 원본 데이터 로드 후 표준 데이터 동기화 실행
+                        transactionViewModel.syncFromRawData {
+                            Toast.makeText(context, "가공 데이터 동기화 및 종목명/날짜 교정 완료", Toast.LENGTH_SHORT).show()
+                        }
                     }
                 }
             }

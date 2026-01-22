@@ -86,46 +86,38 @@ class TransactionRawViewModel(
                 repository.deleteAll()
                 repository.insertAll(correctedRawData)
 
-                val filteredTransactions = correctedRawData.filter { it.type in typeMapping.keys }
+                // importTransactionRawList 내부, correctedRawData 만든 직후에
+                // 정렬된 raw를 만들어 "환전 직전 잔고"를 안정적으로 찾을 수 있게 함
+                val sortedRaw = correctedRawData.sortedWith(
+                    compareBy<TransactionRawEntity>({ it.transactionDate }, { it.transactionNo.toLongOrNull() ?: 0L })
+                )
+
+                val filteredTransactions = correctedRawData
+                    .filter { it.type in typeMapping.keys }
                     .map { raw ->
                         val isOverseas = raw.type.contains("해외") || raw.type.contains("외화")
                         var exchangeRate = 0.0
-                        var finalAmount = if (isOverseas && raw.foreignAmount != 0.0) {
-                            raw.foreignAmount
-                        } else {
-                            raw.amount.toDouble()
-                        }
+                        var finalAmount = if (isOverseas && raw.foreignAmount != 0.0) raw.foreignAmount else raw.amount.toDouble()
                         var finalPrice = raw.price
 
-                        // 해외주식매수입고 시 환율 계산 로직 보강
+                        // 해외주식(매수/매도/배당 등) 중 "USD 환율이 필요한 케이스"를 넓게 잡고,
+                        // 특히 매수입고에 대해 확정 적용
                         if (raw.type == "해외주식매수입고") {
-                            // 같은 날짜, 같은 계좌의 환전 및 선환전 관련 내역을 모두 취합
-                            val relatedExchanges = correctedRawData.filter {
-                                it.account == raw.account && it.transactionDate == raw.transactionDate
-                            }
+                            val currency = (raw.currencyCode.ifBlank { "USD" }).uppercase()
+                            val rate = computeEffectiveFxRateForDate(
+                                sortedRaw = sortedRaw,
+                                account = raw.account,
+                                date = raw.transactionDate,
+                                currency = currency
+                            )
 
-                            // 1. 원화 지출액 계산: 외화매수원화출금 + 선환전차액출금 - 선환전차액입금
-                            val wonWithdrawal = relatedExchanges.filter { it.type == "외화매수원화출금" }.sumOf { it.amount }
-                            val diffWithdrawal = relatedExchanges.filter { it.type == "선환전차액출금" }.sumOf { it.amount }
-                            val diffDeposit = relatedExchanges.filter { it.type == "선환전차액입금" }.sumOf { it.amount }
-
-                            val totalWonSpent = (wonWithdrawal + diffWithdrawal - diffDeposit).toDouble()
-
-                            // 2. 외화 입금액 계산
-                            val foreignDeposit = relatedExchanges.filter { it.type == "외화매수외화입금" }.sumOf { it.foreignDWAmount }
-
-                            // 3. 외화 예수금 잔액 확인
-                            // 실제 환전 시점의 '외화예수금(foreignBalance)' 값을 가져옵니다.
-                            val lastForeignBalance = relatedExchanges.filter { it.type == "외화매수외화입금" }
-                                .lastOrNull()?.foreignBalance ?: 0.0
-
-                            if (totalWonSpent > 0 && foreignDeposit > 0.0) {
-                                exchangeRate = totalWonSpent / foreignDeposit
-                                finalAmount = raw.foreignAmount * exchangeRate
+                            if (rate > 0.0) {
+                                exchangeRate = rate
+                                // raw.price: USD 단가 -> KRW 단가
                                 finalPrice = raw.price * exchangeRate
+                                // raw.foreignAmount: USD 거래금액(대개 단가*수량) -> KRW 거래금액
+                                finalAmount = raw.foreignAmount * exchangeRate
                             }
-                        } else if (isOverseas && raw.foreignAmount != 0.0) {
-                            // 매도나 배당 시에도 필요하다면 해당 일자의 환전 내역을 추적하도록 확장 가능
                         }
 
                         TransactionEntity(
@@ -154,6 +146,74 @@ class TransactionRawViewModel(
                 onResult(rawData.size)
             }
         }
+    }
+
+    private fun computeEffectiveFxRateForDate(
+        sortedRaw: List<TransactionRawEntity>,
+        account: String,
+        date: String,
+        currency: String
+    ): Double {
+        // 1) 같은 날짜/계좌의 관련 환전 내역만 취합
+        val related = sortedRaw.filter {
+            it.account == account &&
+                    it.transactionDate == date &&
+                    it.currencyCode.equals(currency, ignoreCase = true)
+        }
+
+        // 원화 지출 = 외화매수원화출금 + 선환전차액출금 - 선환전차액입금
+        val wonWithdrawal = related
+            .filter { it.type == "외화매수원화출금" }
+            .sumOf { it.amount }
+
+        val diffWithdrawal = related
+            .filter { it.type == "선환전차액출금" }
+            .sumOf { it.amount }
+
+        val diffDeposit = related
+            .filter { it.type == "선환전차액입금" }
+            .sumOf { it.amount }
+
+        val totalWonSpent = (wonWithdrawal + diffWithdrawal - diffDeposit).toDouble()
+        if (totalWonSpent <= 0.0) return 0.0
+
+        // 외화 입금(USD) = 외화매수외화입금의 외화입출금액 합(foreignDWAmount)
+        val foreignDeposit = related
+            .filter { it.type == "외화매수외화입금" }
+            .sumOf { it.foreignDWAmount }
+
+        if (foreignDeposit <= 0.0) return 0.0
+
+        // 2) 환전 직전(같은 계좌/통화) 외화예수금 잔고를 "이전 거래"에서 찾아오기
+        val startingForeignBalance = findPreviousForeignBalance(
+            sortedRaw = sortedRaw,
+            account = account,
+            date = date,
+            currency = currency
+        )
+
+        // 3) 너가 원한 방식: (환전으로 산 달러)에서 (기존 외화예수금) 차감
+        val netBoughtUsd = foreignDeposit - startingForeignBalance
+        if (netBoughtUsd <= 0.0) return 0.0
+
+        return totalWonSpent / netBoughtUsd
+    }
+
+    private fun findPreviousForeignBalance(
+        sortedRaw: List<TransactionRawEntity>,
+        account: String,
+        date: String,
+        currency: String
+    ): Double {
+        // 해당 date 이전의 마지막 외화잔고(foreignBalance)를 가져온다.
+        // transactionNo 정렬까지 되어 있으므로 "마지막 거래"가 안정적.
+        val prev = sortedRaw.asSequence()
+            .filter { it.account == account }
+            .filter { it.currencyCode.equals(currency, ignoreCase = true) }
+            .filter { it.transactionDate < date }
+            .lastOrNull { it.foreignBalance != 0.0 }
+
+        return prev?.foreignBalance ?: 0.0
     }
 
     private fun findCorrectDate(

@@ -23,7 +23,7 @@ import com.gsc.stockoverview.data.entity.TransactionRawEntity
         TransactionEntity::class,
         StockEntity::class
     ],
-    version = 10, // Incremented to 10: Changed TransactionEntity.amount type to Double
+    version = 10,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -32,6 +32,17 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun overseasTradingLogRawDao(): OverseasTradingLogRawDao
     abstract fun transactionDao(): TransactionDao
     abstract fun stockDao(): StockDao
+
+    /**
+     * 모든 테이블의 데이터를 삭제하여 DB를 초기화합니다.
+     */
+    suspend fun clearAllData() {
+        transactionRawDao().deleteAll()
+        tradingLogRawDao().deleteAll()
+        overseasTradingLogRawDao().deleteAll()
+        transactionDao().deleteAll()
+        stockDao().deleteAll()
+    }
 
     companion object {
         @Volatile

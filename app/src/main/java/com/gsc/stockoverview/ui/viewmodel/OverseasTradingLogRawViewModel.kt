@@ -33,9 +33,9 @@ class OverseasTradingLogRawViewModel(
      * 선택한 엑셀 파일에서 '해외매매일지' 시트를 읽어와 DB에 저장함
      *
      * @param uri 엑셀 파일의 URI
-     * @param onResult 처리 완료 후 읽어온 데이터의 총 개수를 반환하는 콜백
+     * @param onResult 처리 완료 후 읽어온 데이터 목록을 반환하는 콜백
      */
-    fun importOverseasTradingLogRawList(uri: Uri, onResult: (Int) -> Unit) {
+    fun importOverseasTradingLogRawList(uri: Uri, onResult: (List<OverseasTradingLogRawEntity>) -> Unit) {
         viewModelScope.launch {
             // 1. 엑셀 파일 읽기 (백그라운드 스레드 실행)
             val data = withContext(Dispatchers.IO) {
@@ -49,17 +49,14 @@ class OverseasTradingLogRawViewModel(
                     repository.deleteAll()
                     repository.insertAll(data)
                 }
-                // 처리 완료 알림
-                onResult(data.size)
+                // 처리 완료 알림 (수집된 데이터를 반환하여 종목 정보 갱신 유도)
+                onResult(data)
             }
         }
     }
 
     /**
      * ExcelReader의 행 데이터를 OverseasTradingLogRawEntity 객체로 변환
-     * 엑셀 컬럼 순서: 계좌, 매매일자, 통화, 종목번호, 종목명, 잔고수량, 매수평균환율, 매매환율, 매수수량, 매수단가, 매수금액, 
-     * 원화매수금액, 매도수량, 매도단가, 매도금액, 원화매도금액, 제비용, 세금, 원화총비용, 원래매수평균가, 
-     * 매매손익, 원화매매손익, 환차익, 총평가손익, 수익률, 환산수익률
      */
     private fun mapToEntity(reader: ExcelReader.RowReader): OverseasTradingLogRawEntity {
         return OverseasTradingLogRawEntity(
@@ -95,7 +92,6 @@ class OverseasTradingLogRawViewModel(
 
 /**
  * ViewModel 인스턴스 생성을 위한 Factory 클래스
- * Repository와 유틸리티 객체들을 주입하여 ViewModel을 생성함
  */
 class OverseasTradingLogRawViewModelFactory(
     private val repository: OverseasTradingLogRawRepository,

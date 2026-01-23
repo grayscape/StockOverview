@@ -26,6 +26,8 @@ import com.gsc.stockoverview.ui.components.formatLong
 import com.gsc.stockoverview.ui.components.formatStockName
 import com.gsc.stockoverview.ui.viewmodel.OverseasTradingLogRawViewModel
 import com.gsc.stockoverview.ui.viewmodel.OverseasTradingLogRawViewModelFactory
+import com.gsc.stockoverview.ui.viewmodel.StockViewModel
+import com.gsc.stockoverview.ui.viewmodel.StockViewModelFactory
 import com.gsc.stockoverview.ui.viewmodel.TradingLogRawViewModel
 import com.gsc.stockoverview.ui.viewmodel.TradingLogRawViewModelFactory
 import com.gsc.stockoverview.ui.viewmodel.TransactionRawViewModel
@@ -52,10 +54,13 @@ fun TransactionDetailScreen(onOpenDrawer: () -> Unit) {
         factory = TransactionRawViewModelFactory(transactionRawRepo, excelReader)
     )
     val tradingLogRawViewModel: TradingLogRawViewModel = viewModel(
-        factory = TradingLogRawViewModelFactory(tradingLogRawRepo, stockRepo, excelReader)
+        factory = TradingLogRawViewModelFactory(tradingLogRawRepo, excelReader)
     )
     val overseasTradingLogRawViewModel: OverseasTradingLogRawViewModel = viewModel(
         factory = OverseasTradingLogRawViewModelFactory(overseasTradingLogRawRepo, excelReader)
+    )
+    val stockViewModel: StockViewModel = viewModel(
+        factory = StockViewModelFactory(stockRepo)
     )
     val transactionViewModel: TransactionViewModel = viewModel(
         factory = TransactionViewModelFactory(
@@ -70,18 +75,22 @@ fun TransactionDetailScreen(onOpenDrawer: () -> Unit) {
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            tradingLogRawViewModel.importTradingLogRawList(it) { tradingCount ->
-                Toast.makeText(context, "매매일지 ${tradingCount}건 로드 및 종목 정보 확인 완료", Toast.LENGTH_SHORT).show()
+            tradingLogRawViewModel.importTradingLogRawList(it) { tradingData ->
+                // 국내 종목 정보 업데이트
+                stockViewModel.ensureStocksExist(tradingData.map { it.stockName })
+                Toast.makeText(context, "매매일지 ${tradingData.size}건 로드 완료", Toast.LENGTH_SHORT).show()
                 
-                overseasTradingLogRawViewModel.importOverseasTradingLogRawList(it) { overseasCount ->
-                    Toast.makeText(context, "해외매매일지 ${overseasCount}건 로드 완료", Toast.LENGTH_SHORT).show()
+                overseasTradingLogRawViewModel.importOverseasTradingLogRawList(it) { overseasData ->
+                    // 해외 종목 정보 업데이트 (필요 시)
+                    stockViewModel.ensureStocksExist(overseasData.map { it.stockName })
+                    Toast.makeText(context, "해외매매일지 ${overseasData.size}건 로드 완료", Toast.LENGTH_SHORT).show()
                     
                     transactionRawViewModel.importTransactionRawList(it) { transCount ->
                         Toast.makeText(context, "전체거래내역 ${transCount}건 로드 완료", Toast.LENGTH_SHORT).show()
                         
                         // 모든 원본 데이터 로드 후 표준 데이터 동기화 실행
                         transactionViewModel.syncFromRawData {
-                            Toast.makeText(context, "가공 데이터 동기화 및 종목명/날짜 교정 완료", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "가공 데이터 동기화 완료", Toast.LENGTH_SHORT).show()
                         }
                     }
                 }

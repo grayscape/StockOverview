@@ -22,7 +22,7 @@ interface TransactionRawDao {
                 WHEN 'CMA' THEN 7 
                 ELSE 8 
             END ASC, 
-            trade_date DESC,
+            transaction_date DESC,
             transaction_no DESC
     """)
     fun getAllTransactionRawList(): Flow<List<TransactionRawEntity>>

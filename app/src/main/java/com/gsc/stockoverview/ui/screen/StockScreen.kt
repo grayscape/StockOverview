@@ -20,6 +20,16 @@ fun StockScreen(onOpenDrawer: () -> Unit) {
     val stockDao = remember { AppDatabase.getDatabase(context).stockDao() }
     val stockList by stockDao.getAllStocks().collectAsState(initial = emptyList())
 
+    var selectedTabIndex by remember { mutableIntStateOf(0) }
+    val tabs = listOf("국내", "해외")
+
+    // 데이터 필터링 및 정렬 (종목명 ASC)
+    val filteredStocks = remember(stockList, selectedTabIndex) {
+        val type = if (selectedTabIndex == 0) "KOREA" else "OVERSEAS"
+        stockList.filter { it.stockType == type }
+            .sortedBy { it.stockName }
+    }
+
     Scaffold(
         topBar = {
             StockTopAppBar(
@@ -29,9 +39,19 @@ fun StockScreen(onOpenDrawer: () -> Unit) {
         }
     ) { innerPadding ->
         Column(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
-            if (stockList.isEmpty()) {
+            TabRow(selectedTabIndex = selectedTabIndex) {
+                tabs.forEachIndexed { index, title ->
+                    Tab(
+                        selected = selectedTabIndex == index,
+                        onClick = { selectedTabIndex = index },
+                        text = { Text(title) }
+                    )
+                }
+            }
+
+            if (filteredStocks.isEmpty()) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
-                    Text("등록된 종목 정보가 없습니다.")
+                    Text("${tabs[selectedTabIndex]} 종목 정보가 없습니다.")
                 }
             } else {
                 LazyColumn(
@@ -39,7 +59,7 @@ fun StockScreen(onOpenDrawer: () -> Unit) {
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    items(stockList) { stock ->
+                    items(filteredStocks, key = { it.stockCode }) { stock ->
                         StockItem(stock)
                     }
                 }
@@ -75,7 +95,12 @@ fun StockItem(stock: StockEntity) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(text = "현재가: ${String.format("%,.0f", stock.currentPrice)} ${stock.currency}")
+                val priceText = if (stock.stockType == "KOREA") {
+                    String.format("%,.0f", stock.currentPrice)
+                } else {
+                    String.format("%,.2f", stock.currentPrice)
+                }
+                Text(text = "현재가: $priceText ${stock.currency}")
                 Text(text = stock.marketType)
             }
         }

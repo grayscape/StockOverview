@@ -10,6 +10,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.gsc.stockoverview.data.AppDatabase
 import com.gsc.stockoverview.data.repository.OverseasTradingLogRawRepository
+import com.gsc.stockoverview.data.repository.StockRepository
 import com.gsc.stockoverview.data.repository.TradingLogRawRepository
 import com.gsc.stockoverview.data.repository.TransactionRawRepository
 import com.gsc.stockoverview.data.repository.TransactionRepository
@@ -31,7 +32,8 @@ fun TransactionScreen(onOpenDrawer: () -> Unit) {
             repository = TransactionRepository(database.transactionDao()),
             transactionRawRepository = TransactionRawRepository(database.transactionRawDao()),
             tradingLogRawRepository = TradingLogRawRepository(database.tradingLogRawDao()),
-            overseasTradingLogRawRepository = OverseasTradingLogRawRepository(database.overseasTradingLogRawDao())
+            overseasTradingLogRawRepository = OverseasTradingLogRawRepository(database.overseasTradingLogRawDao()),
+            stockRepository = StockRepository(database.stockDao())
         )
     )
 
@@ -48,8 +50,8 @@ fun TransactionScreen(onOpenDrawer: () -> Unit) {
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             StockTable(
                 headers = listOf(
-                    "계좌", "매매일자", "구분", "종목명", "단가", "수량",
-                    "수수료", "세금", "거래금액", "손익금액", "수익률", "환율", "환차손익", "거래종류상세"
+                    "계좌", "매매일자", "구분", "거래명", "단가", "수량",
+                    "수수료", "세금", "거래금액", "손익금액", "수익률", "거래종류상세"
                 ),
                 items = transactions,
                 cellContent = { item ->
@@ -57,16 +59,14 @@ fun TransactionScreen(onOpenDrawer: () -> Unit) {
                         item.account,
                         item.tradeDate,
                         item.type,
-                        formatStockName(item.stockName),
+                        formatStockName(item.transactionName),
                         formatDouble(item.price),
                         item.quantity.toString(),
-                        formatLong(item.fee),
-                        formatLong(item.tax),
+                        formatDouble(item.fee),
+                        formatDouble(item.tax),
                         formatDouble(item.amount),
-                        formatLong(item.profitLoss),
+                        formatDouble(item.profitLoss),
                         "${item.yield}%",
-                        formatDouble(item.exchangeRate),
-                        formatLong(item.exchangeProfitLoss),
                         item.typeDetail
                     )
                 }

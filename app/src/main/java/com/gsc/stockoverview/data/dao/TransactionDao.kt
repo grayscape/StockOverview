@@ -22,7 +22,7 @@ interface TransactionDao {
                 WHEN 'CMA' THEN 7 
                 ELSE 8 
             END ASC, 
-            trade_date DESC,
+            account ASC,
             id DESC
     """)
     fun getAllTransactions(): Flow<List<TransactionEntity>>

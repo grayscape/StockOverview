@@ -6,18 +6,15 @@ import androidx.room.Index
 
 @Entity(
     tableName = "transaction_raw",
-    primaryKeys = ["account", "trade_date", "transaction_no"],
-    indices = [Index(value = ["account", "trade_date", "transaction_no"], unique = true)]
+    primaryKeys = ["account", "transaction_date", "transaction_no"],
+    indices = [Index(value = ["account", "transaction_date", "transaction_no"], unique = true)]
 )
 data class TransactionRawEntity(
     @ColumnInfo(name = "account")
     val account: String,                // A: 계좌
-    
-    @ColumnInfo(name = "trade_date")
-    val tradeDate: String,              // B: 매매일자 (교정된 일자)
 
     @ColumnInfo(name = "transaction_date")
-    val transactionDate: String,        // C: 거래일자 (엑셀 원본 일자)
+    val transactionDate: String,        // C: 거래일자
     
     @ColumnInfo(name = "transaction_no")
     val transactionNo: String,          // D: 거래번호
@@ -29,10 +26,7 @@ data class TransactionRawEntity(
     val type: String,                   // F: 거래종류
 
     @ColumnInfo(name = "transaction_name")
-    val transactionName: String,        // G: 거래명 (엑셀 원본 종목명)
-    
-    @ColumnInfo(name = "stock_name")
-    val stockName: String,              // H: 종목명 (교정된 종목명)
+    val transactionName: String,        // G: 거래명
     
     @ColumnInfo(name = "quantity")
     val quantity: Long,                 // I: 수량
@@ -41,7 +35,7 @@ data class TransactionRawEntity(
     val price: Double,                  // J: 단가
     
     @ColumnInfo(name = "amount")
-    val amount: Long,                   // K: 거래금액
+    val amount: Double,                   // K: 거래금액 (원화 또는 외화 일부)
     
     @ColumnInfo(name = "deposit_withdrawal_amount")
     val depositWithdrawalAmount: Long,  // L: 입출금액
@@ -53,10 +47,10 @@ data class TransactionRawEntity(
     val stockBalance: Long,             // N: 유가잔고
     
     @ColumnInfo(name = "fee")
-    val fee: Long,                      // O: 수수료
+    val fee: Double,                    // O: 수수료 (해외의 경우 외화일 수 있음)
     
     @ColumnInfo(name = "tax")
-    val tax: Long,                      // P: 제세금합
+    val tax: Double,                    // P: 제세금합 (해외의 경우 외화일 수 있음)
     
     @ColumnInfo(name = "foreign_amount")
     val foreignAmount: Double,          // Q: 외화거래금액

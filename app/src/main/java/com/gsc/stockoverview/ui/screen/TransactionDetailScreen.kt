@@ -24,75 +24,80 @@ import com.gsc.stockoverview.ui.components.StockTopAppBar
 import com.gsc.stockoverview.ui.components.formatDouble
 import com.gsc.stockoverview.ui.components.formatLong
 import com.gsc.stockoverview.ui.components.formatStockName
-import com.gsc.stockoverview.ui.viewmodel.OverseasTradingLogRawViewModel
-import com.gsc.stockoverview.ui.viewmodel.OverseasTradingLogRawViewModelFactory
-import com.gsc.stockoverview.ui.viewmodel.StockViewModel
-import com.gsc.stockoverview.ui.viewmodel.StockViewModelFactory
-import com.gsc.stockoverview.ui.viewmodel.TradingLogRawViewModel
-import com.gsc.stockoverview.ui.viewmodel.TradingLogRawViewModelFactory
-import com.gsc.stockoverview.ui.viewmodel.TransactionRawViewModel
-import com.gsc.stockoverview.ui.viewmodel.TransactionRawViewModelFactory
-import com.gsc.stockoverview.ui.viewmodel.TransactionViewModel
-import com.gsc.stockoverview.ui.viewmodel.TransactionViewModelFactory
+import com.gsc.stockoverview.ui.viewmodel.*
 import com.gsc.stockoverview.utils.ExcelReader
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun TransactionDetailScreen(onOpenDrawer: () -> Unit) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val database = remember { AppDatabase.getDatabase(context) }
     val excelReader = remember { ExcelReader(context) }
 
-    // Repository 인스턴스들
+    // Repository 및 ViewModel 설정
     val transactionRepo = remember { TransactionRepository(database.transactionDao()) }
     val transactionRawRepo = remember { TransactionRawRepository(database.transactionRawDao()) }
     val tradingLogRawRepo = remember { TradingLogRawRepository(database.tradingLogRawDao()) }
     val overseasTradingLogRawRepo = remember { OverseasTradingLogRawRepository(database.overseasTradingLogRawDao()) }
     val stockRepo = remember { StockRepository(database.stockDao()) }
 
-    // ViewModel 인스턴스들
-    val transactionRawViewModel: TransactionRawViewModel = viewModel(
-        factory = TransactionRawViewModelFactory(transactionRawRepo, excelReader)
-    )
-    val tradingLogRawViewModel: TradingLogRawViewModel = viewModel(
-        factory = TradingLogRawViewModelFactory(tradingLogRawRepo, excelReader)
-    )
-    val overseasTradingLogRawViewModel: OverseasTradingLogRawViewModel = viewModel(
-        factory = OverseasTradingLogRawViewModelFactory(overseasTradingLogRawRepo, excelReader)
-    )
-    val stockViewModel: StockViewModel = viewModel(
-        factory = StockViewModelFactory(stockRepo)
-    )
-    val transactionViewModel: TransactionViewModel = viewModel(
-        factory = TransactionViewModelFactory(
-            transactionRepo,
-            transactionRawRepo,
-            tradingLogRawRepo,
-            overseasTradingLogRawRepo
-        )
-    )
+    val transactionRawViewModel: TransactionRawViewModel = viewModel(factory = TransactionRawViewModelFactory(transactionRawRepo, excelReader))
+    val tradingLogRawViewModel: TradingLogRawViewModel = viewModel(factory = TradingLogRawViewModelFactory(tradingLogRawRepo, excelReader))
+    val overseasTradingLogRawViewModel: OverseasTradingLogRawViewModel = viewModel(factory = OverseasTradingLogRawViewModelFactory(overseasTradingLogRawRepo, excelReader))
+    val stockViewModel: StockViewModel = viewModel(factory = StockViewModelFactory(stockRepo))
+    val transactionViewModel: TransactionViewModel = viewModel(factory = TransactionViewModelFactory(transactionRepo, transactionRawRepo, tradingLogRawRepo, overseasTradingLogRawRepo, stockRepo))
 
     val excelPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         uri?.let {
-            tradingLogRawViewModel.importTradingLogRawList(it) { tradingData ->
-                // 국내 종목 정보 업데이트
-                stockViewModel.ensureStocksExist(tradingData.map { it.stockName })
-                Toast.makeText(context, "매매일지 ${tradingData.size}건 로드 완료", Toast.LENGTH_SHORT).show()
-                
-                overseasTradingLogRawViewModel.importOverseasTradingLogRawList(it) { overseasData ->
-                    // 해외 종목 정보 업데이트 (필요 시)
-                    stockViewModel.ensureStocksExist(overseasData.map { it.stockName })
-                    Toast.makeText(context, "해외매매일지 ${overseasData.size}건 로드 완료", Toast.LENGTH_SHORT).show()
-                    
-                    transactionRawViewModel.importTransactionRawList(it) { transCount ->
-                        Toast.makeText(context, "전체거래내역 ${transCount}건 로드 완료", Toast.LENGTH_SHORT).show()
-                        
-                        // 모든 원본 데이터 로드 후 표준 데이터 동기화 실행
-                        transactionViewModel.syncFromRawData {
-                            Toast.makeText(context, "가공 데이터 동기화 완료", Toast.LENGTH_SHORT).show()
+            scope.launch {
+                try {
+                    val sheetData = withContext(Dispatchers.IO) {
+                        excelReader.readAllSheets(it, listOf("매매일지", "해외매매일지", "전체거래내역"))
+                    }
+
+                    if (sheetData.isEmpty()) {
+                        Toast.makeText(context, "엑셀 데이터를 읽을 수 없습니다.", Toast.LENGTH_SHORT).show()
+                        return@launch
+                    }
+
+                    withContext(Dispatchers.IO) {
+                        // 국내 매매일지 처리
+                        sheetData["매매일지"]?.let { rows ->
+                            val entities = rows.map { tradingLogRawViewModel.mapRowToEntity(it) }
+                            tradingLogRawRepo.deleteAll()
+                            tradingLogRawRepo.insertAll(entities)
+                            stockViewModel.ensureStocksExist(entities.map { it.stockName })
+                        }
+
+                        // 해외 매매일지 처리
+                        sheetData["해외매매일지"]?.let { rows ->
+                            val entities = rows.map { overseasTradingLogRawViewModel.mapRowToEntity(it) }
+                            overseasTradingLogRawRepo.deleteAll()
+                            overseasTradingLogRawRepo.insertAll(entities)
+                            // 종목코드, 종목명, 통화 정보를 함께 전달
+                            stockViewModel.ensureOverseasStocksExist(entities.map { 
+                                Triple(it.stockNumber, it.stockName, it.currency) 
+                            })
+                        }
+
+                        // 전체거래내역 처리
+                        sheetData["전체거래내역"]?.let { rows ->
+                            val entities = rows.map { transactionRawViewModel.mapRowToEntity(it) }
+                            transactionRawRepo.deleteAll()
+                            transactionRawRepo.insertAll(entities)
                         }
                     }
+
+                    transactionViewModel.syncFromRawData {
+                        Toast.makeText(context, "모든 데이터 로드 및 동기화 완료", Toast.LENGTH_SHORT).show()
+                    }
+                } catch (e: Exception) {
+                    Toast.makeText(context, "가져오기 실패: ${e.message}", Toast.LENGTH_LONG).show()
                 }
             }
         }
@@ -140,7 +145,7 @@ fun TransactionRawTab(viewModel: TransactionRawViewModel) {
     val data by viewModel.transactionRawList.collectAsState(initial = emptyList())
     StockTable(
         headers = listOf(
-            "계좌", "매매일자", "거래일자", "거래번호", "원번호", "거래종류", "거래명", "종목명", "수량", "단가", "거래금액",
+            "계좌", "거래일자", "번호", "거래종류", "거래명", "수량", "단가", "거래금액",
             "입출금액", "예수금", "유가잔고", "수수료", "제세금합", "외화거래금액", "외화입출금액",
             "외화예수금", "외화유가증권", "미수발생금액", "미수변제금액", "통화코드",
             "상대기관", "상대고객명", "상대계좌번호", "받는분표시", "내계좌표시"
@@ -148,10 +153,10 @@ fun TransactionRawTab(viewModel: TransactionRawViewModel) {
         items = data,
         cellContent = { item ->
             listOf(
-                item.account, item.tradeDate, item.transactionDate, item.transactionNo, item.originalNo, item.type, formatStockName(item.transactionName), formatStockName(item.stockName),
-                item.quantity.toString(), formatDouble(item.price), formatLong(item.amount),
+                item.account, item.transactionDate, item.transactionNo, item.type, formatStockName(item.transactionName),
+                item.quantity.toString(), formatDouble(item.price), formatDouble(item.amount),
                 formatLong(item.depositWithdrawalAmount), formatLong(item.balance), formatLong(item.stockBalance),
-                formatLong(item.fee), formatLong(item.tax), formatDouble(item.foreignAmount),
+                formatDouble(item.fee), formatDouble(item.tax), formatDouble(item.foreignAmount),
                 formatDouble(item.foreignDWAmount), formatDouble(item.foreignBalance), formatDouble(item.foreignStock),
                 formatLong(item.uncollectedAmount), formatLong(item.repaidAmount), item.currencyCode,
                 item.relativeAgency, item.relativeClientName, item.relativeAccountNumber,

@@ -12,9 +12,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/**
- * 증권사 원본 거래 내역(Raw Data)의 수집 및 저장을 담당하는 ViewModel
- */
 class TransactionRawViewModel(
     private val repository: TransactionRawRepository,
     private val excelReader: ExcelReader
@@ -22,13 +19,10 @@ class TransactionRawViewModel(
 
     val transactionRawList: Flow<List<TransactionRawEntity>> = repository.allTransactionRawList
 
-    /**
-     * 엑셀에서 원본 데이터를 읽어 DB를 갱신함
-     */
     fun importTransactionRawList(uri: Uri, onResult: (Int) -> Unit) {
         viewModelScope.launch {
             val rawData = withContext(Dispatchers.IO) {
-                excelReader.readExcelSheet(uri, "전체거래내역") { reader -> mapToEntity(reader) }
+                excelReader.readExcelSheet(uri, "전체거래내역") { reader -> mapRowToEntity(reader) }
             }
 
             if (rawData.isNotEmpty()) {
@@ -41,26 +35,26 @@ class TransactionRawViewModel(
         }
     }
 
-    private fun mapToEntity(reader: ExcelReader.RowReader): TransactionRawEntity {
-        val rawDate = reader.getString(1)
-        val rawStockName = reader.getString(5)
+    /**
+     * 이미지 분석 기반 엑셀 인덱스 최종 매핑
+     * 0:계좌, 1:일자, 2:번호, 4:거래종류, 5:종목명, 6:수량, 7:단가, 8:원화금액, 11:수수료, 12:세금, 13:외화금액, 21:통화
+     */
+    fun mapRowToEntity(reader: ExcelReader.RowReader): TransactionRawEntity {
         return TransactionRawEntity(
             account = reader.getString(0),
-            tradeDate = rawDate,
-            transactionDate = rawDate,
+            transactionDate = reader.getString(1),
             transactionNo = reader.getString(2),
             originalNo = reader.getString(3),
             type = reader.getString(4),
-            transactionName = rawStockName,
-            stockName = rawStockName,
+            transactionName = reader.getString(5),
             quantity = reader.getLong(6),
             price = reader.getDouble(7),
-            amount = reader.getLong(8),
+            amount = reader.getDouble(8),
             depositWithdrawalAmount = reader.getLong(9),
             balance = reader.getLong(10),
             stockBalance = reader.getLong(11),
-            fee = reader.getLong(12),
-            tax = reader.getLong(13),
+            fee = reader.getDouble(12),
+            tax = reader.getDouble(13),
             foreignAmount = reader.getDouble(14),
             foreignDWAmount = reader.getDouble(15),
             foreignBalance = reader.getDouble(16),
@@ -72,7 +66,7 @@ class TransactionRawViewModel(
             relativeClientName = reader.getString(22),
             relativeAccountNumber = reader.getString(23),
             recipientDisplay = reader.getString(24),
-            myAccountDisplay = reader.getString(25)
+            myAccountDisplay = reader.getString(25),
         )
     }
 }
@@ -82,6 +76,10 @@ class TransactionRawViewModelFactory(
     private val excelReader: ExcelReader
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        return TransactionRawViewModel(repository, excelReader) as T
+        if (modelClass.isAssignableFrom(TransactionRawViewModel::class.java)) {
+            @Suppress("UNCHECKED_CAST")
+            return TransactionRawViewModel(repository, excelReader) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
     }
 }

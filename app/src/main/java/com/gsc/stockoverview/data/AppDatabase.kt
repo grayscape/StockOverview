@@ -23,7 +23,7 @@ import com.gsc.stockoverview.data.entity.TransactionRawEntity
         TransactionEntity::class,
         StockEntity::class
     ],
-    version = 10,
+    version = 15,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

@@ -21,8 +21,11 @@ data class TransactionEntity(
     @ColumnInfo(name = "type_detail")
     val typeDetail: String,         // 거래종류상세
 
-    @ColumnInfo(name = "stock_name")
-    val stockName: String,          // 종목명
+    @ColumnInfo(name = "stock_code")
+    val stockCode: String,          // 종목코드
+
+    @ColumnInfo(name = "transaction_name")
+    val transactionName: String,    // 거래명
 
     @ColumnInfo(name = "price")
     val price: Double,              // 단가
@@ -31,23 +34,20 @@ data class TransactionEntity(
     val quantity: Long,             // 수량
 
     @ColumnInfo(name = "fee")
-    val fee: Long,                  // 수수료
+    val fee: Double,                // 수수료 (Double로 변경)
 
     @ColumnInfo(name = "tax")
-    val tax: Long,                  // 세금
+    val tax: Double,                // 세금 (Double로 변경)
 
     @ColumnInfo(name = "amount")
     val amount: Double,             // 거래금액
 
     @ColumnInfo(name = "profit_loss")
-    val profitLoss: Long,           // 손익금액
+    val profitLoss: Double,         // 손익금액 (Double로 변경)
 
     @ColumnInfo(name = "yield")
     val yield: Double,              // 수익률
 
-    @ColumnInfo(name = "exchange_rate")
-    val exchangeRate: Double,       // 환율
-
-    @ColumnInfo(name = "exchange_profit_loss")
-    val exchangeProfitLoss: Long    // 환차손익
+    @ColumnInfo(name = "currency_code")
+    val currencyCode: String        // 통화코드 (추가됨)
 )

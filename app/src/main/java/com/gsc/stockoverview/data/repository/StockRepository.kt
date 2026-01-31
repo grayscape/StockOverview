@@ -7,6 +7,8 @@ import kotlinx.coroutines.flow.Flow
 class StockRepository(private val stockDao: StockDao) {
     val allStocks: Flow<List<StockEntity>> = stockDao.getAllStocks()
 
+    suspend fun getStockByCode(code: String): StockEntity? = stockDao.getStockByCode(code)
+
     suspend fun getStockByName(name: String): StockEntity? = stockDao.getStockByName(name)
 
     suspend fun insertStock(stock: StockEntity) {

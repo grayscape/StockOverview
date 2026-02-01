@@ -10,19 +10,29 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface TransactionDao {
     @Query("""
-        SELECT * FROM `transaction` 
+        SELECT 
+            t.id, t.account, t.trade_date, t.type, t.type_detail, t.stock_code,
+            CASE WHEN s.stock_short_name IS NOT NULL THEN s.stock_short_name ELSE t.transaction_name END as transaction_name,
+            t.price, t.volume, t.fee, t.tax, t.amount, t.profit_loss, t.yield, t.currency_code, t.transaction_order
+        FROM `transaction` t
+        LEFT JOIN stock s ON t.stock_code = s.stock_code
         ORDER BY
-            trade_date DESC,
-            id DESC
+            t.trade_date DESC,
+            t.id DESC
     """)
     fun getAllTransactions(): Flow<List<TransactionEntity>>
 
     @Query("""
-        SELECT * FROM `transaction` 
-        WHERE account = :account
+        SELECT 
+            t.id, t.account, t.trade_date, t.type, t.type_detail, t.stock_code,
+            CASE WHEN s.stock_short_name IS NOT NULL THEN s.stock_short_name ELSE t.transaction_name END as transaction_name,
+            t.price, t.volume, t.fee, t.tax, t.amount, t.profit_loss, t.yield, t.currency_code, t.transaction_order
+        FROM `transaction` t
+        LEFT JOIN stock s ON t.stock_code = s.stock_code
+        WHERE t.account = :account
         ORDER BY
-            trade_date DESC,
-            id DESC
+            t.trade_date DESC,
+            t.id DESC
     """)
     fun getTransactionsByAccount(account: String): Flow<List<TransactionEntity>>
 

@@ -13,6 +13,9 @@ data class StockEntity(
     @ColumnInfo(name = "stock_name")
     val stockName: String,          // 종목명
 
+    @ColumnInfo(name = "stock_short_name")
+    val stockShortName: String = stockName, // 종목약어명 (기본값: 종목명)
+
     @ColumnInfo(name = "stock_type")
     val stockType: String,          // 종목유형
 

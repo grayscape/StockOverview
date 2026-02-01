@@ -1,24 +1,221 @@
 package com.gsc.stockoverview.ui.screen
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.gsc.stockoverview.data.AppDatabase
+import com.gsc.stockoverview.data.api.NaverStockApiService
+import com.gsc.stockoverview.data.api.YahooStockApiService
+import com.gsc.stockoverview.data.repository.CommonCodeRepository
+import com.gsc.stockoverview.data.repository.TransactionRepository
 import com.gsc.stockoverview.ui.components.StockTopAppBar
+import com.gsc.stockoverview.ui.components.formatDouble
+import com.gsc.stockoverview.ui.viewmodel.CommonCodeViewModel
+import com.gsc.stockoverview.ui.viewmodel.CommonCodeViewModelFactory
+import com.gsc.stockoverview.ui.viewmodel.StockWiseItem
+import com.gsc.stockoverview.ui.viewmodel.StockWiseViewModel
+import com.gsc.stockoverview.ui.viewmodel.StockWiseViewModelFactory
 
 @Composable
 fun StockWiseScreen(onOpenDrawer: () -> Unit) {
+    val context = LocalContext.current
+    val database = remember { AppDatabase.getDatabase(context) }
+    
+    val commonCodeViewModel: CommonCodeViewModel = viewModel(
+        factory = CommonCodeViewModelFactory(CommonCodeRepository(database.commonCodeDao()))
+    )
+    val accountCodes by commonCodeViewModel.getCodesByParent("ACC_ROOT").collectAsState(initial = emptyList())
+    
+    val viewModel: StockWiseViewModel = viewModel(
+        factory = StockWiseViewModelFactory(
+            transactionRepository = TransactionRepository(database.transactionDao()),
+            naverApi = NaverStockApiService(),
+            yahooApi = YahooStockApiService()
+        )
+    )
+
+    val stockWiseList by viewModel.stockWiseList.collectAsState(initial = emptyList())
+    val selectedTab by viewModel.selectedTab.collectAsState()
+    
+    val tabs = remember(accountCodes) {
+        listOf("전체") + accountCodes.map { it.name }
+    }
+
+    // 화면 진입 시 초기 시세 갱신
+    LaunchedEffect(Unit) {
+        viewModel.refreshPrices()
+    }
+
     Scaffold(
         topBar = {
-            StockTopAppBar(title = "종목별현황", onOpenDrawer = onOpenDrawer)
+            StockTopAppBar(
+                title = "종목별현황",
+                onOpenDrawer = onOpenDrawer,
+                actions = {
+                    TextButton(onClick = { viewModel.refreshPrices() }) {
+                        Text("시세갱신", color = MaterialTheme.colorScheme.primary)
+                    }
+                }
+            )
         }
     ) { padding ->
-        Box(modifier = Modifier.padding(padding).fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("종목별현황 화면 준비 중입니다.")
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            if (tabs.size > 1) {
+                ScrollableTabRow(
+                    selectedTabIndex = if (tabs.indexOf(selectedTab) >= 0) tabs.indexOf(selectedTab) else 0,
+                    edgePadding = 16.dp,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    contentColor = MaterialTheme.colorScheme.primary,
+                    divider = {}
+                ) {
+                    tabs.forEach { tab ->
+                        Tab(
+                            selected = selectedTab == tab,
+                            onClick = { viewModel.selectTab(tab) },
+                            text = { Text(text = tab, style = MaterialTheme.typography.titleSmall) }
+                        )
+                    }
+                }
+            }
+
+            StockWiseHeader()
+            
+            LazyColumn(modifier = Modifier.fillMaxSize()) {
+                items(stockWiseList) { item ->
+                    StockWiseRow(item)
+                    HorizontalDivider(thickness = 0.5.dp, color = Color.LightGray)
+                }
+            }
         }
     }
+}
+
+@Composable
+fun StockWiseHeader() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .padding(vertical = 8.dp, horizontal = 12.dp)
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            HeaderText("종목명", Modifier.weight(1.5f))
+            HeaderText("평가손익", Modifier.weight(1.2f))
+            HeaderText("평가금액", Modifier.weight(1.2f))
+            HeaderText("현재시세", Modifier.weight(1f))
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            HeaderText("보유수량", Modifier.weight(1.5f))
+            HeaderText("손익률", Modifier.weight(1.2f))
+            HeaderText("매입금액", Modifier.weight(1.2f))
+            HeaderText("매입평균", Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+fun RowScope.HeaderText(text: String, modifier: Modifier) {
+    Text(
+        text = text,
+        modifier = modifier,
+        style = MaterialTheme.typography.labelSmall,
+        fontWeight = FontWeight.Bold,
+        textAlign = TextAlign.End,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+}
+
+@Composable
+fun StockWiseRow(item: StockWiseItem) {
+    val profitColor = when {
+        item.evaluationProfit > 0 -> Color.Red
+        item.evaluationProfit < 0 -> Color.Blue
+        else -> MaterialTheme.colorScheme.onSurface
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 10.dp, horizontal = 12.dp)
+    ) {
+        // 첫 번째 줄: 종목명, 평가손익, 평가금액, 현재시세
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = item.stockName,
+                modifier = Modifier.weight(1.5f),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1
+            )
+            ValueText(
+                text = formatDouble(item.evaluationProfit),
+                modifier = Modifier.weight(1.2f),
+                color = profitColor
+            )
+            ValueText(
+                text = formatDouble(item.evaluationAmount),
+                modifier = Modifier.weight(1.2f)
+            )
+            ValueText(
+                text = formatDouble(item.currentPrice),
+                modifier = Modifier.weight(1f)
+            )
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        // 두 번째 줄: 보유수량, 손익률, 매입금액, 매입평균
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = formatDouble(item.holdVolume),
+                modifier = Modifier.weight(1.5f),
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray,
+                textAlign = TextAlign.Start
+            )
+            ValueText(
+                text = "${formatDouble(item.yield)}%",
+                modifier = Modifier.weight(1.2f),
+                color = profitColor,
+                style = MaterialTheme.typography.bodySmall
+            )
+            ValueText(
+                text = formatDouble(item.buyAmount),
+                modifier = Modifier.weight(1.2f),
+                style = MaterialTheme.typography.bodySmall
+            )
+            ValueText(
+                text = formatDouble(item.buyAverage),
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+    }
+}
+
+@Composable
+fun RowScope.ValueText(
+    text: String,
+    modifier: Modifier,
+    color: Color = MaterialTheme.colorScheme.onSurface,
+    style: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.bodyMedium
+) {
+    Text(
+        text = text,
+        modifier = modifier,
+        style = style,
+        color = color,
+        textAlign = TextAlign.End,
+        maxLines = 1
+    )
 }

@@ -4,18 +4,8 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import com.gsc.stockoverview.data.dao.CommonCodeDao
-import com.gsc.stockoverview.data.dao.OverseasTradingLogRawDao
-import com.gsc.stockoverview.data.dao.StockDao
-import com.gsc.stockoverview.data.dao.TradingLogRawDao
-import com.gsc.stockoverview.data.dao.TransactionDao
-import com.gsc.stockoverview.data.dao.TransactionRawDao
-import com.gsc.stockoverview.data.entity.CommonCodeEntity
-import com.gsc.stockoverview.data.entity.OverseasTradingLogRawEntity
-import com.gsc.stockoverview.data.entity.StockEntity
-import com.gsc.stockoverview.data.entity.TradingLogRawEntity
-import com.gsc.stockoverview.data.entity.TransactionEntity
-import com.gsc.stockoverview.data.entity.TransactionRawEntity
+import com.gsc.stockoverview.data.dao.*
+import com.gsc.stockoverview.data.entity.*
 
 @Database(
     entities = [
@@ -24,9 +14,10 @@ import com.gsc.stockoverview.data.entity.TransactionRawEntity
         OverseasTradingLogRawEntity::class,
         TransactionEntity::class,
         StockEntity::class,
-        CommonCodeEntity::class
+        CommonCodeEntity::class,
+        PortfolioEntity::class
     ],
-    version = 17,
+    version = 18,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -36,6 +27,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun transactionDao(): TransactionDao
     abstract fun stockDao(): StockDao
     abstract fun commonCodeDao(): CommonCodeDao
+    abstract fun portfolioDao(): PortfolioDao
 
     /**
      * 모든 테이블의 데이터를 삭제하여 DB를 초기화합니다.
@@ -47,6 +39,7 @@ abstract class AppDatabase : RoomDatabase() {
         transactionDao().deleteAll()
         stockDao().deleteAll()
         commonCodeDao().deleteAll()
+        portfolioDao().deleteAll()
     }
 
     companion object {

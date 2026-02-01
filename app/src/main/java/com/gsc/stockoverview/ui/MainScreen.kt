@@ -16,8 +16,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.gsc.stockoverview.data.AppDatabase
+import com.gsc.stockoverview.data.repository.CommonCodeRepository
 import com.gsc.stockoverview.ui.screen.*
+import com.gsc.stockoverview.ui.viewmodel.CommonCodeViewModel
+import com.gsc.stockoverview.ui.viewmodel.CommonCodeViewModelFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -30,7 +34,8 @@ enum class Screen(val title: String) {
     TRADING_LOG("거래내역"),
     STOCK("종목"),
     PORTFOLIO("포트폴리오"),
-    TRANSACTION_DETAIL("거래내역상세")
+    TRANSACTION_DETAIL("거래내역상세"),
+    STOCK_DETAIL("종목상세")
 }
 
 @Composable
@@ -38,8 +43,18 @@ fun MainScreen() {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     var currentScreen by remember { mutableStateOf(Screen.OVERALL) }
+    var selectedStockCode by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+
+    val database = remember { AppDatabase.getDatabase(context) }
+    val commonCodeViewModel: CommonCodeViewModel = viewModel(
+        factory = CommonCodeViewModelFactory(CommonCodeRepository(database.commonCodeDao()))
+    )
+
+    LaunchedEffect(Unit) {
+        commonCodeViewModel.initDefaultCodes()
+    }
 
     val onOpenDrawer: () -> Unit = {
         scope.launch { drawerState.open() }
@@ -81,7 +96,7 @@ fun MainScreen() {
                 HorizontalDivider()
                 
                 // 일반 화면 메뉴
-                Screen.entries.forEach { screen ->
+                Screen.entries.filter { it != Screen.STOCK_DETAIL }.forEach { screen ->
                     NavigationDrawerItem(
                         label = { Text(screen.title) },
                         selected = currentScreen == screen,
@@ -117,50 +132,68 @@ fun MainScreen() {
     ) {
         Scaffold(
             bottomBar = {
-                NavigationBar {
-                    BottomNavItem(
-                        selected = currentScreen == Screen.OVERALL,
-                        onClick = { currentScreen = Screen.OVERALL },
-                        icon = Icons.Default.Analytics,
-                        label = "전체현황"
-                    )
-                    BottomNavItem(
-                        selected = currentScreen == Screen.STOCK_WISE,
-                        onClick = { currentScreen = Screen.STOCK_WISE },
-                        icon = Icons.AutoMirrored.Filled.TrendingUp,
-                        label = "종목별"
-                    )
-                    BottomNavItem(
-                        selected = currentScreen == Screen.ACCOUNT_WISE,
-                        onClick = { currentScreen = Screen.ACCOUNT_WISE },
-                        icon = Icons.Default.AccountBalance,
-                        label = "계좌별"
-                    )
-                    BottomNavItem(
-                        selected = currentScreen == Screen.PERIOD_WISE,
-                        onClick = { currentScreen = Screen.PERIOD_WISE },
-                        icon = Icons.Default.DateRange,
-                        label = "기간별"
-                    )
-                    BottomNavItem(
-                        selected = currentScreen == Screen.TRADING_LOG,
-                        onClick = { currentScreen = Screen.TRADING_LOG },
-                        icon = Icons.AutoMirrored.Filled.ListAlt,
-                        label = "거래내역"
-                    )
+                if (currentScreen != Screen.STOCK_DETAIL) {
+                    NavigationBar {
+                        BottomNavItem(
+                            selected = currentScreen == Screen.OVERALL,
+                            onClick = { currentScreen = Screen.OVERALL },
+                            icon = Icons.Default.Analytics,
+                            label = "전체현황"
+                        )
+                        BottomNavItem(
+                            selected = currentScreen == Screen.STOCK_WISE,
+                            onClick = { currentScreen = Screen.STOCK_WISE },
+                            icon = Icons.AutoMirrored.Filled.TrendingUp,
+                            label = "종목별"
+                        )
+                        BottomNavItem(
+                            selected = currentScreen == Screen.ACCOUNT_WISE,
+                            onClick = { currentScreen = Screen.ACCOUNT_WISE },
+                            icon = Icons.Default.AccountBalance,
+                            label = "계좌별"
+                        )
+                        BottomNavItem(
+                            selected = currentScreen == Screen.PERIOD_WISE,
+                            onClick = { currentScreen = Screen.PERIOD_WISE },
+                            icon = Icons.Default.DateRange,
+                            label = "기간별"
+                        )
+                        BottomNavItem(
+                            selected = currentScreen == Screen.TRADING_LOG,
+                            onClick = { currentScreen = Screen.TRADING_LOG },
+                            icon = Icons.AutoMirrored.Filled.ListAlt,
+                            label = "거래내역"
+                        )
+                    }
                 }
             }
         ) { innerPadding ->
-            Box(modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding()).fillMaxSize()) {
+            Box(modifier = Modifier.padding(bottom = if (currentScreen == Screen.STOCK_DETAIL) 0.dp else innerPadding.calculateBottomPadding()).fillMaxSize()) {
                 when (currentScreen) {
                     Screen.OVERALL -> OverallScreen(onOpenDrawer)
                     Screen.STOCK_WISE -> StockWiseScreen(onOpenDrawer)
                     Screen.ACCOUNT_WISE -> AccountWiseScreen(onOpenDrawer)
                     Screen.PERIOD_WISE -> PeriodWiseScreen(onOpenDrawer)
                     Screen.TRADING_LOG -> TransactionScreen(onOpenDrawer)
-                    Screen.STOCK -> StockScreen(onOpenDrawer)
+                    Screen.STOCK -> StockScreen(
+                        onOpenDrawer = onOpenDrawer,
+                        onStockClick = { code ->
+                            selectedStockCode = code
+                            currentScreen = Screen.STOCK_DETAIL
+                        }
+                    )
                     Screen.PORTFOLIO -> PortfolioScreen(onOpenDrawer)
                     Screen.TRANSACTION_DETAIL -> TransactionDetailScreen(onOpenDrawer)
+                    Screen.STOCK_DETAIL -> {
+                        selectedStockCode?.let { code ->
+                            StockDetailScreen(
+                                stockCode = code,
+                                onBack = {
+                                    currentScreen = Screen.STOCK
+                                }
+                            )
+                        }
+                    }
                 }
             }
         }

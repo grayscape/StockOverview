@@ -1,5 +1,6 @@
 package com.gsc.stockoverview.ui.screen
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,7 +16,10 @@ import com.gsc.stockoverview.data.entity.StockEntity
 import com.gsc.stockoverview.ui.components.StockTopAppBar
 
 @Composable
-fun StockScreen(onOpenDrawer: () -> Unit) {
+fun StockScreen(
+    onOpenDrawer: () -> Unit,
+    onStockClick: (String) -> Unit
+) {
     val context = LocalContext.current
     val stockDao = remember { AppDatabase.getDatabase(context).stockDao() }
     val stockList by stockDao.getAllStocks().collectAsState(initial = emptyList())
@@ -60,7 +64,7 @@ fun StockScreen(onOpenDrawer: () -> Unit) {
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(filteredStocks, key = { it.stockCode }) { stock ->
-                        StockItem(stock)
+                        StockItem(stock, onStockClick)
                     }
                 }
             }
@@ -69,9 +73,14 @@ fun StockScreen(onOpenDrawer: () -> Unit) {
 }
 
 @Composable
-fun StockItem(stock: StockEntity) {
+fun StockItem(
+    stock: StockEntity,
+    onStockClick: (String) -> Unit
+) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onStockClick(stock.stockCode) },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -79,11 +88,20 @@ fun StockItem(stock: StockEntity) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(
-                    text = stock.stockName,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                Column {
+                    Text(
+                        text = stock.stockName,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    if (stock.stockShortName != stock.stockName) {
+                        Text(
+                            text = "(${stock.stockShortName})",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
                 Text(
                     text = stock.stockCode,
                     fontSize = 14.sp,

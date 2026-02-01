@@ -7,6 +7,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.gsc.stockoverview.data.AppDatabase
 import com.gsc.stockoverview.data.repository.OverseasTradingLogRawRepository
@@ -39,6 +40,8 @@ fun TransactionScreen(onOpenDrawer: () -> Unit) {
     )
 
     val transactions by viewModel.transactionList.collectAsState(initial = emptyList())
+    val selectedTab by viewModel.selectedTab.collectAsState()
+    val tabs = listOf("전체", "일반", "ISA", "연금", "IRP", "퇴직IRP", "금통장", "CMA")
 
     Scaffold(
         topBar = {
@@ -49,6 +52,27 @@ fun TransactionScreen(onOpenDrawer: () -> Unit) {
         }
     ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            ScrollableTabRow(
+                selectedTabIndex = tabs.indexOf(selectedTab),
+                edgePadding = 16.dp,
+                containerColor = MaterialTheme.colorScheme.surface,
+                contentColor = MaterialTheme.colorScheme.primary,
+                divider = {}
+            ) {
+                tabs.forEach { tab ->
+                    Tab(
+                        selected = selectedTab == tab,
+                        onClick = { viewModel.selectTab(tab) },
+                        text = { 
+                            Text(
+                                text = tab,
+                                style = MaterialTheme.typography.titleSmall
+                            ) 
+                        }
+                    )
+                }
+            }
+
             StockTable(
                 headers = listOf(
                     "계좌", "매매일자", "구분", "거래명", "거래금액", "단가", "거래량",

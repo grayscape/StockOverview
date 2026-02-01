@@ -13,7 +13,12 @@ import com.gsc.stockoverview.data.repository.TradingLogRawRepository
 import com.gsc.stockoverview.data.repository.TransactionRawRepository
 import com.gsc.stockoverview.data.repository.TransactionRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -29,7 +34,21 @@ class TransactionViewModel(
     private val stockRepository: StockRepository
 ) : ViewModel() {
 
-    val transactionList: Flow<List<TransactionEntity>> = repository.allTransactions
+    private val _selectedTab = MutableStateFlow("전체")
+    val selectedTab: StateFlow<String> = _selectedTab.asStateFlow()
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val transactionList: Flow<List<TransactionEntity>> = _selectedTab.flatMapLatest { tab ->
+        if (tab == "전체") {
+            repository.allTransactions
+        } else {
+            repository.getTransactionsByAccount(tab)
+        }
+    }
+
+    fun selectTab(tab: String) {
+        _selectedTab.value = tab
+    }
 
     fun syncFromRawData(onComplete: () -> Unit = {}) {
         viewModelScope.launch {

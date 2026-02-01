@@ -11,21 +11,20 @@ import kotlinx.coroutines.flow.Flow
 interface TransactionDao {
     @Query("""
         SELECT * FROM `transaction` 
-        ORDER BY 
-            CASE account 
-                WHEN '일반' THEN 1 
-                WHEN '연금' THEN 2 
-                WHEN 'ISA' THEN 3 
-                WHEN 'IRP' THEN 4 
-                WHEN '퇴직IRP' THEN 5 
-                WHEN '금통장' THEN 6 
-                WHEN 'CMA' THEN 7 
-                ELSE 8 
-            END ASC, 
-            account ASC,
+        ORDER BY
+            trade_date DESC,
             id DESC
     """)
     fun getAllTransactions(): Flow<List<TransactionEntity>>
+
+    @Query("""
+        SELECT * FROM `transaction` 
+        WHERE account = :account
+        ORDER BY
+            trade_date DESC,
+            id DESC
+    """)
+    fun getTransactionsByAccount(account: String): Flow<List<TransactionEntity>>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertAll(transactions: List<TransactionEntity>)

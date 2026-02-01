@@ -43,7 +43,7 @@ class TransactionRawViewModel(
         return TransactionRawEntity(
             account = reader.getString(0),
             transactionDate = reader.getString(1),
-            transactionNo = reader.getString(2),
+            transactionNo = reader.getLong(2).toInt(),
             originalNo = reader.getString(3),
             type = reader.getString(4),
             transactionName = reader.getString(5),

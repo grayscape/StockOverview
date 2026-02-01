@@ -17,6 +17,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import java.text.DecimalFormat
 import java.util.Locale
 
 @Composable
@@ -35,8 +36,9 @@ fun <T> StockTable(
     }
 
     // Narrow columns
-    val narrowHeaders = listOf("계좌", "구분", "수량", "매수수량", "매도수량", "잔고수량")
+    val narrowHeaders = listOf("계좌", "구분", "수량", "매수수량", "매도수량", "잔고수량", "번호")
     val feeHeaders = listOf("수수료", "매매비용")
+    val dateHeaders = listOf("매매일자", "거래일자")
 
     Column(modifier = Modifier.horizontalScroll(scrollState)) {
         // Header
@@ -45,6 +47,7 @@ fun <T> StockTable(
                 val columnWidth = when (header) {
                     in narrowHeaders -> 35.dp
                     in feeHeaders -> 45.dp
+                    in dateHeaders -> 60.dp
                     else -> 85.dp
                 }
                 TableCell(header, true, columnWidth)
@@ -61,6 +64,7 @@ fun <T> StockTable(
                         val columnWidth = when (header) {
                             in narrowHeaders -> 35.dp
                             in feeHeaders -> 45.dp
+                            in dateHeaders -> 60.dp
                             else -> 85.dp
                         }
                         TableCell(cell, false, columnWidth)
@@ -87,5 +91,16 @@ fun TableCell(text: String, isHeader: Boolean = false, width: Dp = 85.dp) {
 }
 
 fun formatLong(value: Long) = String.format(Locale.getDefault(), "%,d", value)
-fun formatDouble(value: Double) = String.format(Locale.getDefault(), "%,.2f", value)
+
+private val decimalFormat = DecimalFormat("#,###.##")
+fun formatDouble(value: Double): String = decimalFormat.format(value)
+
 fun formatStockName(name: String) = if (name.length > 6) name.take(6) + ".." else name
+
+fun formatDate(date: String): String {
+    return if (date.length >= 4 && (date.startsWith("20") || date.startsWith("19"))) {
+        date.substring(2)
+    } else {
+        date
+    }
+}

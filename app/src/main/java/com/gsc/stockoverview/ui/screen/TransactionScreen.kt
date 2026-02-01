@@ -16,6 +16,7 @@ import com.gsc.stockoverview.data.repository.TransactionRawRepository
 import com.gsc.stockoverview.data.repository.TransactionRepository
 import com.gsc.stockoverview.ui.components.StockTable
 import com.gsc.stockoverview.ui.components.StockTopAppBar
+import com.gsc.stockoverview.ui.components.formatDate
 import com.gsc.stockoverview.ui.components.formatDouble
 import com.gsc.stockoverview.ui.components.formatLong
 import com.gsc.stockoverview.ui.components.formatStockName
@@ -50,23 +51,23 @@ fun TransactionScreen(onOpenDrawer: () -> Unit) {
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             StockTable(
                 headers = listOf(
-                    "계좌", "매매일자", "구분", "거래명", "단가", "수량",
-                    "수수료", "세금", "거래금액", "손익금액", "수익률", "거래종류상세"
+                    "계좌", "매매일자", "구분", "거래명", "거래금액", "단가", "거래량",
+                    "수수료", "세금", "손익금액", "수익률", "거래종류상세"
                 ),
                 items = transactions,
                 cellContent = { item ->
                     listOf(
                         item.account,
-                        item.tradeDate,
+                        formatDate(item.tradeDate),
                         item.type,
                         formatStockName(item.transactionName),
+                        formatDouble(item.amount),
                         formatDouble(item.price),
-                        item.quantity.toString(),
+                        formatDouble(item.volume),
                         formatDouble(item.fee),
                         formatDouble(item.tax),
-                        formatDouble(item.amount),
                         formatDouble(item.profitLoss),
-                        "${item.yield}%",
+                        formatDouble(item.yield) + "%",
                         item.typeDetail
                     )
                 }

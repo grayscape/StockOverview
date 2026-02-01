@@ -32,7 +32,7 @@ class StockViewModel(
      * 국내 종목명 리스트를 받아 DB에 없는 경우 네이버 API로 조회하여 저장함
      * (매매일지 수입 시 호출)
      */
-    fun ensureStocksExist(stockNames: List<String>) {
+    fun ensureStocksExist(stockNames: List<String>, onComplete: () -> Unit = {}) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 stockNames.distinct().forEach { stockName ->
@@ -45,6 +45,7 @@ class StockViewModel(
                     }
                 }
             }
+            onComplete()
         }
     }
 
@@ -52,7 +53,7 @@ class StockViewModel(
      * 해외 종목 정보를 코드로 조회하여 저장함
      * (해외매매일지 수입 시 호출)
      */
-    fun ensureOverseasStocksExist(overseasInfos: List<Triple<String, String, String>>) {
+    fun ensureOverseasStocksExist(overseasInfos: List<Triple<String, String, String>>, onComplete: () -> Unit = {}) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
                 overseasInfos.distinct().forEach { (stockCode, stockName, currency) ->
@@ -70,6 +71,7 @@ class StockViewModel(
                     }
                 }
             }
+            onComplete()
         }
     }
 }

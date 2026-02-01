@@ -17,7 +17,7 @@ data class TransactionRawEntity(
     val transactionDate: String,        // C: 거래일자
     
     @ColumnInfo(name = "transaction_no")
-    val transactionNo: String,          // D: 거래번호
+    val transactionNo: Int,             // D: 거래번호 (String -> Int)
     
     @ColumnInfo(name = "original_no")
     val originalNo: String,             // E: 원번호

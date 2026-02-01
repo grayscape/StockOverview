@@ -30,8 +30,8 @@ data class TransactionEntity(
     @ColumnInfo(name = "price")
     val price: Double,              // 단가
 
-    @ColumnInfo(name = "quantity")
-    val quantity: Long,             // 수량
+    @ColumnInfo(name = "volume")
+    val volume: Double,             // 거래량
 
     @ColumnInfo(name = "fee")
     val fee: Double,                // 수수료 (Double로 변경)
@@ -49,5 +49,8 @@ data class TransactionEntity(
     val yield: Double,              // 수익률
 
     @ColumnInfo(name = "currency_code")
-    val currencyCode: String        // 통화코드 (추가됨)
+    val currencyCode: String,       // 통화코드 (추가됨)
+
+    @ColumnInfo(name = "transaction_order")
+    val transactionOrder: Int       // 거래순서 (추가됨)
 )

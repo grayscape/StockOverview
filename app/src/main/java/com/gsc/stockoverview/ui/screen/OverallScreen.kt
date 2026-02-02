@@ -92,26 +92,33 @@ fun OverallStatsCard(stats: OverallStats) {
             HorizontalDivider()
             Spacer(modifier = Modifier.height(8.dp))
 
-            StatRow("원금", numberFormat.format(stats.principal))
-            StatRow("평가자산", numberFormat.format(stats.evaluatedAssets))
-            StatRow("운용금액", numberFormat.format(stats.operatingAmount))
-            StatRow("평가금액", numberFormat.format(stats.evaluatedAmount))
-            
-            val profitColor = when {
-                stats.evaluatedProfit > 0 -> Color.Red
-                stats.evaluatedProfit < 0 -> Color.Blue
-                else -> Color.Unspecified
+            if (stats.title == "총투자내역") {
+                StatRow("원금", numberFormat.format(stats.principal))
             }
-            StatRow("평가수익", profitFormat.format(stats.evaluatedProfit), valueColor = profitColor)
+            
+            StatRow("평가자산", numberFormat.format(stats.evaluatedAssets))
+            
+            if (stats.title != "예금투자내역") {
+                StatRow("운용금액", numberFormat.format(stats.operatingAmount))
+                StatRow("평가금액", numberFormat.format(stats.evaluatedAmount))
+                
+                val profitColor = when {
+                    stats.evaluatedProfit > 0 -> Color.Red
+                    stats.evaluatedProfit < 0 -> Color.Blue
+                    else -> Color.Unspecified
+                }
+                StatRow("평가수익", profitFormat.format(stats.evaluatedProfit), valueColor = profitColor)
+            }
             
             val realizedColor = when {
                 stats.realizedProfit > 0 -> Color.Red
                 stats.realizedProfit < 0 -> Color.Blue
                 else -> Color.Unspecified
             }
-            StatRow("실현손익", profitFormat.format(stats.realizedProfit), valueColor = realizedColor)
+            val realizedLabel = if (stats.title == "예금투자내역") "이자수익" else "실현손익"
+            StatRow(realizedLabel, profitFormat.format(stats.realizedProfit), valueColor = realizedColor)
             
-            if (stats.title == "총투자내역") {
+            if (stats.title == "총투자내역" || stats.title == "예금투자내역") {
                 StatRow("예수금", numberFormat.format(stats.deposit))
             }
         }

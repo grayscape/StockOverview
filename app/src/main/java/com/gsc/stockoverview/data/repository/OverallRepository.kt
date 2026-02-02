@@ -122,45 +122,35 @@ class OverallRepository(
         // 4. 결과 리스트 생성
         val distStats = OverallStats(
             title = "분산투자내역",
-            principal = distOp,
             operatingAmount = distOp,
             evaluatedAmount = distEval,
             evaluatedProfit = distEval - distOp,
             realizedProfit = distRealized,
-            evaluatedAssets = distEval,
-            deposit = 0.0
+            evaluatedAssets = distEval
         )
 
         val indStats = OverallStats(
             title = "개별투자내역",
-            principal = indOp,
             operatingAmount = indOp,
             evaluatedAmount = indEval,
             evaluatedProfit = indEval - indOp,
             realizedProfit = indRealized,
-            evaluatedAssets = indEval,
-            deposit = 0.0
+            evaluatedAssets = indEval
         )
 
         val stockStats = OverallStats(
             title = "주식투자내역",
-            principal = distOp + indOp,
             operatingAmount = distOp + indOp,
             evaluatedAmount = distEval + indEval,
             evaluatedProfit = (distEval + indEval) - (distOp + indOp),
             realizedProfit = distRealized + indRealized,
-            evaluatedAssets = distEval + indEval,
-            deposit = 0.0
+            evaluatedAssets = distEval + indEval
         )
 
         val depositInvStats = OverallStats(
             title = "예금투자내역",
-            principal = totalPrincipal - (distOp + indOp),
             realizedProfit = depositInterestProfit,
-            evaluatedAssets = (totalPrincipal - (distOp + indOp)) + depositInterestProfit, // 원금 + 이자
-            operatingAmount = 0.0,
-            evaluatedAmount = 0.0,
-            evaluatedProfit = 0.0,
+            evaluatedAssets = totalDeposit,
             deposit = totalDeposit
         )
 

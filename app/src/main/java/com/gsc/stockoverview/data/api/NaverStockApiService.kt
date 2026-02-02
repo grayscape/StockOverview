@@ -26,6 +26,40 @@ class NaverStockApiService {
     }
 
     /**
+     * 네이버 금시세 API를 사용하여 국내 금 시세(원/g)를 조회합니다.
+     */
+    fun fetchGoldPrice(): Double {
+        var connection: HttpURLConnection? = null
+        return try {
+            val urlString = "https://m.stock.naver.com/front-api/realTime/marketIndex/metals"
+            val url = URL(urlString)
+            connection = url.openConnection() as HttpURLConnection
+            connection.requestMethod = "GET"
+            connection.connectTimeout = 5000
+            connection.readTimeout = 5000
+
+            if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+                val response = readStream(connection, "UTF-8")
+                val json = JSONObject(response)
+                val result = json.optJSONObject("result")
+                
+                // 국내 금 데이터 (020000 키 사용)
+                val goldData = result?.optJSONObject("020000")
+                if (goldData != null) {
+                    val priceStr = goldData.optString("closePrice", "0")
+                    return priceStr.replace(",", "").toDoubleOrNull() ?: 0.0
+                }
+            }
+            0.0
+        } catch (e: Exception) {
+            Log.e("NaverStockApiService", "Error fetching gold price: ${e.message}")
+            0.0
+        } finally {
+            connection?.disconnect()
+        }
+    }
+
+    /**
      * 네이버 자동완성 API를 사용하여 국내 종목 코드를 검색합니다.
      */
     private fun searchDomesticStockCode(stockName: String): Pair<String, String>? {

@@ -27,6 +27,7 @@ class NaverStockApiService {
 
     /**
      * 네이버 금시세 API를 사용하여 국내 금 시세(원/g)를 조회합니다.
+     * POST 방식으로 변경되었으며, Payload에 reutersCodes를 포함해야 합니다.
      */
     fun fetchGoldPrice(): Double {
         var connection: HttpURLConnection? = null
@@ -34,17 +35,29 @@ class NaverStockApiService {
             val urlString = "https://m.stock.naver.com/front-api/realTime/marketIndex/metals"
             val url = URL(urlString)
             connection = url.openConnection() as HttpURLConnection
-            connection.requestMethod = "GET"
+            connection.requestMethod = "POST"
+            connection.doOutput = true
+            connection.setRequestProperty("Content-Type", "application/json")
             connection.connectTimeout = 5000
             connection.readTimeout = 5000
+
+            // JSON Payload 설정
+            val payload = "{\"reutersCodes\":[\"M04020000\"]}"
+            connection.outputStream.use { os ->
+                os.write(payload.toByteArray(Charsets.UTF_8))
+            }
 
             if (connection.responseCode == HttpURLConnection.HTTP_OK) {
                 val response = readStream(connection, "UTF-8")
                 val json = JSONObject(response)
-                val result = json.optJSONObject("result")
                 
-                // 국내 금 데이터 (020000 키 사용)
-                val goldData = result?.optJSONObject("020000")
+                // result가 JSONArray가 아닌 JSONObject임
+                val result = json.optJSONObject("result")
+                val metals = result?.optJSONObject("metals")
+                
+                // reutersCodes로 요청한 "M04020000" 키를 사용하여 데이터를 가져옴
+                val goldData = metals?.optJSONObject("M04020000")
+                
                 if (goldData != null) {
                     val priceStr = goldData.optString("closePrice", "0")
                     return priceStr.replace(",", "").toDoubleOrNull() ?: 0.0
@@ -53,6 +66,47 @@ class NaverStockApiService {
             0.0
         } catch (e: Exception) {
             Log.e("NaverStockApiService", "Error fetching gold price: ${e.message}")
+            0.0
+        } finally {
+            connection?.disconnect()
+        }
+    }
+
+    /**
+     * 네이버 검색 API를 사용하여 원/달러 환율을 조회합니다.
+     */
+    fun fetchExchangeRate(): Double {
+        var connection: HttpURLConnection? = null
+        return try {
+            val urlString = "https://ac.search.naver.com/nx/ac?q=%EB%8B%AC%EB%9F%AC%20%ED%99%98%EC%9C%A8&con=0&frm=nx&ans=2&r_format=json&r_enc=UTF-8&r_unicode=0&t_koreng=1&run=2&rev=4&q_enc=UTF-8&st=100&ackey=j21mjqpc&_callback=_jsonp_11"
+            val url = URL(urlString)
+            connection = url.openConnection() as HttpURLConnection
+            connection.requestMethod = "GET"
+            connection.connectTimeout = 5000
+            connection.readTimeout = 5000
+
+            if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+                var response = readStream(connection, "UTF-8")
+                
+                // JSONP 응답 처리 (예: _jsonp_11({...}) 에서 괄호 안의 JSON만 추출)
+                if (response.contains("(")) {
+                    response = response.substringAfter("(").substringBeforeLast(")")
+                }
+                
+                val json = JSONObject(response)
+                val answerArray = json.optJSONArray("answer")
+                if (answerArray != null && answerArray.length() > 0) {
+                    // answer[0] 배열의 6번째 인덱스에 환율 정보가 있음 ("1,451.00")
+                    val infoArray = answerArray.getJSONArray(0)
+                    if (infoArray.length() > 6) {
+                        val rateStr = infoArray.getString(6)
+                        return rateStr.replace(",", "").toDoubleOrNull() ?: 0.0
+                    }
+                }
+            }
+            0.0
+        } catch (e: Exception) {
+            Log.e("NaverStockApiService", "Error fetching exchange rate: ${e.message}")
             0.0
         } finally {
             connection?.disconnect()

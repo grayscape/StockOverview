@@ -8,7 +8,6 @@ import androidx.compose.material.icons.filled.AccountBalance
 import androidx.compose.material.icons.filled.Analytics
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.DeleteSweep
-import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -16,12 +15,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.gsc.stockoverview.data.AppDatabase
-import com.gsc.stockoverview.data.repository.CommonCodeRepository
 import com.gsc.stockoverview.ui.screen.*
-import com.gsc.stockoverview.ui.viewmodel.CommonCodeViewModel
-import com.gsc.stockoverview.ui.viewmodel.CommonCodeViewModelFactory
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -46,15 +41,6 @@ fun MainScreen() {
     var selectedStockCode by remember { mutableStateOf<String?>(null) }
     val context = LocalContext.current
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
-
-    val database = remember { AppDatabase.getDatabase(context) }
-    val commonCodeViewModel: CommonCodeViewModel = viewModel(
-        factory = CommonCodeViewModelFactory(CommonCodeRepository(database.commonCodeDao()))
-    )
-
-    LaunchedEffect(Unit) {
-        commonCodeViewModel.initDefaultCodes()
-    }
 
     val onOpenDrawer: () -> Unit = {
         scope.launch { drawerState.open() }

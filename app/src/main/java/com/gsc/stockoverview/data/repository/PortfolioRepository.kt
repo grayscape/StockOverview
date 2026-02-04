@@ -68,35 +68,21 @@ class PortfolioRepository(
 
     suspend fun fetchCurrentPrice(stockCode: String): Double? = withContext(Dispatchers.IO) {
         val stock = stockDao.getStockByCode(stockCode) ?: return@withContext null
-        val updatedStock = if (stock.currency == "KRW") {
-            naverApi.fetchDomesticStockDetails(stockCode, stock.marketType)
-        } else {
-            yahooApi.fetchOverseasStockDetails(stockCode, stock.stockName, stock.currency)
+        
+        val updatedPrice = when {
+            stock.marketType == "METALS" -> naverApi.fetchGoldPrice()
+            stock.currency == "KRW" -> naverApi.fetchDomesticStockDetails(stockCode, stock.marketType)?.currentPrice
+            else -> yahooApi.fetchOverseasStockDetails(stockCode, stock.stockName, stock.currency)?.currentPrice
         }
         
-        updatedStock?.let {
-            stockDao.insertStock(it)
-            it.currentPrice
+        updatedPrice?.let {
+            val updatedStock = stock.copy(currentPrice = it)
+            stockDao.insertStock(updatedStock)
+            it
         } ?: stock.currentPrice
     }
     
     suspend fun getAllStocks(): List<StockEntity> = withContext(Dispatchers.IO) {
         stockDao.getAllStocks().first()
-    }
-
-    suspend fun initializeDefaultPortfolio() {
-        if (portfolioDao.getCount() == 0) {
-            val defaults = listOf(
-                PortfolioEntity("379800", 20.0),
-                PortfolioEntity("283580", 10.0),
-                PortfolioEntity("294400", 10.0),
-                PortfolioEntity("305080", 6.0),
-                PortfolioEntity("456880", 6.0),
-                PortfolioEntity("365780", 12.0),
-                PortfolioEntity("411060", 16.0),
-                PortfolioEntity("357870", 20.0)
-            )
-            portfolioDao.insertAll(defaults)
-        }
     }
 }

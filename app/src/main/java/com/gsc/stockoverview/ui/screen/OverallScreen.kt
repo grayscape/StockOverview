@@ -73,6 +73,7 @@ fun OverallScreen(onOpenDrawer: () -> Unit) {
 @Composable
 fun OverallStatsCard(stats: OverallStats) {
     val numberFormat = DecimalFormat("#,###")
+    val usdFormat = DecimalFormat("#,###.##")
     val profitFormat = DecimalFormat("+#,###;-#,###")
 
     Card(
@@ -92,13 +93,24 @@ fun OverallStatsCard(stats: OverallStats) {
             HorizontalDivider()
             Spacer(modifier = Modifier.height(8.dp))
 
-            if (stats.title == "총투자내역") {
-                StatRow("원금", numberFormat.format(stats.principal))
-            }
-            
-            StatRow("평가자산", numberFormat.format(stats.evaluatedAssets))
-            
-            if (stats.title != "예금투자내역") {
+            if (stats.title == "기타내역") {
+                StatRow("원화예수금", numberFormat.format(stats.krwDeposit))
+                StatRow("달러예수금", "$ " + usdFormat.format(stats.usdDeposit))
+                StatRow("원화배당금", numberFormat.format(stats.krwDividend))
+                StatRow("달러배당금", "$ " + usdFormat.format(stats.usdDividend))
+                StatRow("원화이자", numberFormat.format(stats.krwInterest))
+                StatRow("달러이자", "$ " + usdFormat.format(stats.usdInterest))
+                Spacer(modifier = Modifier.height(8.dp))
+                HorizontalDivider()
+                Spacer(modifier = Modifier.height(8.dp))
+                StatRow("총 예수금(원화환산)", numberFormat.format(stats.evaluatedAssets))
+            } else {
+                if (stats.title == "총투자내역") {
+                    StatRow("원금", numberFormat.format(stats.principal))
+                }
+                
+                StatRow("평가자산", numberFormat.format(stats.evaluatedAssets))
+                
                 StatRow("운용금액", numberFormat.format(stats.operatingAmount))
                 StatRow("평가금액", numberFormat.format(stats.evaluatedAmount))
                 
@@ -108,18 +120,17 @@ fun OverallStatsCard(stats: OverallStats) {
                     else -> Color.Unspecified
                 }
                 StatRow("평가수익", profitFormat.format(stats.evaluatedProfit), valueColor = profitColor)
-            }
-            
-            val realizedColor = when {
-                stats.realizedProfit > 0 -> Color.Red
-                stats.realizedProfit < 0 -> Color.Blue
-                else -> Color.Unspecified
-            }
-            val realizedLabel = if (stats.title == "예금투자내역") "이자수익" else "실현손익"
-            StatRow(realizedLabel, profitFormat.format(stats.realizedProfit), valueColor = realizedColor)
-            
-            if (stats.title == "총투자내역" || stats.title == "예금투자내역") {
-                StatRow("예수금", numberFormat.format(stats.deposit))
+                
+                val realizedColor = when {
+                    stats.realizedProfit > 0 -> Color.Red
+                    stats.realizedProfit < 0 -> Color.Blue
+                    else -> Color.Unspecified
+                }
+                StatRow("실현손익", profitFormat.format(stats.realizedProfit), valueColor = realizedColor)
+                
+                if (stats.title == "총투자내역") {
+                    StatRow("예수금", numberFormat.format(stats.deposit))
+                }
             }
         }
     }

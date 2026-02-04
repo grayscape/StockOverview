@@ -39,13 +39,15 @@ class StockWiseViewModel(
     val selectedTab: StateFlow<String> = _selectedTab.asStateFlow()
 
     private val _stockPrices = MutableStateFlow<Map<String, Double>>(emptyMap())
+    private val _exchangeRate = MutableStateFlow(1450.0) // 기본 환율
     
     val stockWiseList = combine(
         transactionRepository.allTransactions,
         _selectedTab,
-        _stockPrices
-    ) { transactions, tab, prices ->
-        calculateStockWise(transactions, tab, prices)
+        _stockPrices,
+        _exchangeRate
+    ) { transactions, tab, prices, rate ->
+        calculateStockWise(transactions, tab, prices, rate)
     }
 
     fun selectTab(tab: String) {
@@ -63,45 +65,54 @@ class StockWiseViewModel(
                 .map { Triple(it.stockCode, it.transactionName, it.currencyCode) }
                 .distinct()
 
-            val newPrices = withContext(Dispatchers.IO) {
-                stocksToFetch.associate { (code, name, currency) ->
-                    val price = if (currency == "KRW") {
-                        naverApi.fetchDomesticStockDetails(code)?.currentPrice ?: 0.0
-                    } else {
-                        yahooApi.fetchOverseasStockDetails(code, name)?.currentPrice ?: 0.0
+            val (newPrices, newRate) = withContext(Dispatchers.IO) {
+                val prices = stocksToFetch.associate { (code, name, currency) ->
+                    val price = when {
+                        code == "M04020000" -> naverApi.fetchGoldPrice()
+                        currency == "KRW" -> naverApi.fetchDomesticStockDetails(code)?.currentPrice ?: 0.0
+                        else -> yahooApi.fetchOverseasStockDetails(code, name)?.currentPrice ?: 0.0
                     }
                     code to price
                 }
+                val rate = naverApi.fetchExchangeRate()
+                prices to (if (rate > 0) rate else 1450.0)
             }
             _stockPrices.value = newPrices
+            _exchangeRate.value = newRate
         }
     }
 
     private fun calculateStockWise(
         transactions: List<TransactionEntity>,
         tab: String,
-        prices: Map<String, Double>
+        prices: Map<String, Double>,
+        exchangeRate: Double
     ): List<StockWiseItem> {
         val filtered = if (tab == "전체") transactions else transactions.filter { it.account == tab }
         
         return filtered.groupBy { it.stockCode }
             .filter { it.key.isNotBlank() }
             .mapNotNull { (code, trans) ->
-                val name = trans.first().transactionName
+                val firstTrans = trans.first()
+                val name = firstTrans.transactionName
+                val currency = firstTrans.currencyCode
+                val rate = if (currency == "USD") exchangeRate else 1.0
+                
                 var volume = 0.0
-                var totalBuyAmount = 0.0
+                var totalBuyAmountKrw = 0.0
                 
                 trans.sortedBy { it.tradeDate }.forEach { t ->
+                    val tRate = if (t.currencyCode == "USD") exchangeRate else 1.0
                     when (t.type) {
                         "매수", "입금" -> {
                             volume += t.volume
-                            totalBuyAmount += t.amount
+                            totalBuyAmountKrw += (t.amount * tRate)
                         }
                         "매도", "출금" -> {
                             if (volume > 0) {
-                                val avg = totalBuyAmount / volume
+                                val avgKrw = totalBuyAmountKrw / volume
                                 volume -= t.volume
-                                totalBuyAmount -= t.volume * avg
+                                totalBuyAmountKrw -= t.volume * avgKrw
                             }
                         }
                     }
@@ -110,21 +121,23 @@ class StockWiseViewModel(
                 if (volume <= 0.001) return@mapNotNull null // 아주 작은 잔고는 제외
 
                 val currentPrice = prices[code] ?: 0.0
-                val evaluationAmount = volume * currentPrice
-                val evaluationProfit = evaluationAmount - totalBuyAmount
-                val yield = if (totalBuyAmount != 0.0) (evaluationProfit / totalBuyAmount) * 100 else 0.0
+                // currentPrice가 USD인 경우 KRW로 환산
+                val currentPriceKrw = currentPrice * rate
+                val evaluationAmountKrw = volume * currentPriceKrw
+                val evaluationProfitKrw = evaluationAmountKrw - totalBuyAmountKrw
+                val yield = if (totalBuyAmountKrw != 0.0) (evaluationProfitKrw / totalBuyAmountKrw) * 100 else 0.0
 
                 StockWiseItem(
                     stockName = name,
                     stockCode = code,
-                    currentPrice = currentPrice,
+                    currentPrice = currentPriceKrw, // 화면에는 원화로 표시
                     holdVolume = volume,
-                    buyAmount = totalBuyAmount,
-                    buyAverage = totalBuyAmount / volume,
-                    evaluationAmount = evaluationAmount,
-                    evaluationProfit = evaluationProfit,
+                    buyAmount = totalBuyAmountKrw,
+                    buyAverage = totalBuyAmountKrw / volume,
+                    evaluationAmount = evaluationAmountKrw,
+                    evaluationProfit = evaluationProfitKrw,
                     yield = yield,
-                    currency = trans.first().currencyCode
+                    currency = currency
                 )
             }
             .sortedByDescending { it.evaluationAmount }

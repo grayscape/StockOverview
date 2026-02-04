@@ -23,13 +23,6 @@ class StockViewModel(
     private val naverStockApiService = NaverStockApiService()
     private val yahooStockApiService = YahooStockApiService()
 
-    init {
-        // 기본 종목(금현물 등) 등록 확인
-        viewModelScope.launch {
-            stockRepository.ensureDefaultStocks()
-        }
-    }
-
     /**
      * 모든 종목 정보 리스트를 Flow 형태로 제공
      */

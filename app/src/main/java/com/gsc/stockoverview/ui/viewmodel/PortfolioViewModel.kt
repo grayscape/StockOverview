@@ -39,7 +39,6 @@ class PortfolioViewModel(private val repository: PortfolioRepository) : ViewMode
 
     init {
         viewModelScope.launch {
-            repository.initializeDefaultPortfolio()
             loadData()
         }
     }

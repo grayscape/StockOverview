@@ -18,7 +18,15 @@ data class OverallStats(
     val evaluatedAmount: Double = 0.0,   // 평가금액 (현재가 * 수량)
     val evaluatedProfit: Double = 0.0,   // 평가수익 (평가금액 - 운용금액)
     val realizedProfit: Double = 0.0,    // 실현손익 (매도손익 + 배당 + 이자)
-    val deposit: Double = 0.0            // 예수금
+    val deposit: Double = 0.0,           // 예수금 (원화 환산 합계)
+    
+    // 기타내역용 추가 필드
+    val krwDeposit: Double = 0.0,
+    val usdDeposit: Double = 0.0,
+    val krwDividend: Double = 0.0,
+    val usdDividend: Double = 0.0,
+    val krwInterest: Double = 0.0,
+    val usdInterest: Double = 0.0
 )
 
 class OverallRepository(
@@ -32,35 +40,91 @@ class OverallRepository(
         val allTransactions = transactionDao.getAllTransactions().first().sortedBy { it.tradeDate }
         val portfolioCodes = portfolioDao.getAllPortfolioItems().first().map { it.stockCode }.toSet()
         val allStocks = stockDao.getAllStocks().first()
+        
+        // 환율 정보 가져오기
+        val exchangeRate = naverApi.fetchExchangeRate().let { if (it <= 0.0) 1450.0 else it }
 
-        // 1. 예수금 및 총 원금 계산
-        var totalDeposit = 0.0
-        var totalPrincipal = 0.0
-        var depositInterestProfit = 0.0 // 예금투자내역 (이자수익)
+        // 1. 예수금, 원금, 기타내역 계산
+        var totalDepositKrw = 0.0
+        var totalPrincipalKrw = 0.0
+        
+        var krwDeposit = 0.0
+        var usdDeposit = 0.0
+        var krwDividend = 0.0
+        var usdDividend = 0.0
+        var krwInterest = 0.0
+        var usdInterest = 0.0
 
         allTransactions.forEach { t ->
+            val rate = if (t.currencyCode == "USD") exchangeRate else 1.0
+            val amountInKrw = t.amount * rate
+            val feeInKrw = t.fee * rate
+            val taxInKrw = t.tax * rate
+            val netAmountInKrw = (t.amount - t.fee - t.tax) * rate
+            val netAmountOriginal = t.amount - t.fee - t.tax
+
             when {
                 t.typeDetail == "이체입금" -> {
-                    totalDeposit += t.amount
-                    totalPrincipal += t.amount
+                    totalDepositKrw += amountInKrw
+                    totalPrincipalKrw += amountInKrw
+                    if (t.currencyCode == "USD") usdDeposit += t.amount else krwDeposit += t.amount
                 }
-                t.typeDetail == "이체출금" -> {
-                    totalDeposit -= t.amount
-                    totalPrincipal -= t.amount
+                t.typeDetail == "이체송금" -> {
+                    totalDepositKrw -= amountInKrw
+                    totalPrincipalKrw -= amountInKrw
+                    if (t.currencyCode == "USD") usdDeposit -= t.amount else krwDeposit -= t.amount
                 }
                 t.type == "매수" -> {
-                    totalDeposit -= (t.amount + t.fee + t.tax)
+                    val cost = amountInKrw + feeInKrw + taxInKrw
+                    totalDepositKrw -= cost
+                    if (t.currencyCode == "USD") usdDeposit -= (t.amount + t.fee + t.tax) else krwDeposit -= (t.amount + t.fee + t.tax)
                 }
                 t.type == "매도" -> {
-                    totalDeposit += (t.amount - t.fee - t.tax)
+                    totalDepositKrw += netAmountInKrw
+                    if (t.currencyCode == "USD") usdDeposit += netAmountOriginal else krwDeposit += netAmountOriginal
                 }
-                t.typeDetail == "배당금입금" || t.typeDetail == "외화배당금입금" -> {
-                    totalDeposit += (t.amount - t.fee - t.tax)
+                // 배당금 처리 (사용자 지정 상세항목 적용)
+                t.typeDetail == "ETF/상장클래스 분배금입금" -> {
+                    totalDepositKrw += netAmountInKrw
+                    krwDeposit += netAmountOriginal
+                    krwDividend += netAmountOriginal
                 }
-                t.typeDetail == "예탁금이용료입금" || t.typeDetail == "외화예탁금이용료입금" -> {
-                    val netInterest = t.amount - t.fee - t.tax
-                    totalDeposit += netInterest
-                    depositInterestProfit += netInterest
+                t.typeDetail == "배당금외화입금" -> {
+                    totalDepositKrw += netAmountInKrw
+                    usdDeposit += netAmountOriginal
+                    usdDividend += netAmountOriginal
+                }
+                // 이자 처리 (사용자 지정 상세항목 적용)
+                t.typeDetail == "예탁금이용료입금" -> {
+                    totalDepositKrw += netAmountInKrw
+                    krwDeposit += netAmountOriginal
+                    krwInterest += netAmountOriginal
+                }
+                t.typeDetail == "외화예탁금이용료입금" -> {
+                    totalDepositKrw += netAmountInKrw
+                    usdDeposit += netAmountOriginal
+                    usdInterest += netAmountOriginal
+                }
+                // 그 외 배당/이자성 항목 처리 (누락 방지)
+                t.typeDetail.contains("배당금") || t.typeDetail.contains("분배금") -> {
+                    totalDepositKrw += netAmountInKrw
+                    if (t.currencyCode == "USD") {
+                        usdDeposit += netAmountOriginal
+                        usdDividend += netAmountOriginal
+                    } else {
+                        krwDeposit += netAmountOriginal
+                        krwDividend += netAmountOriginal
+                    }
+                }
+                t.typeDetail.contains("예탁금이용료") -> {
+                    totalDepositKrw += netAmountInKrw
+                    if (t.currencyCode == "USD") {
+                        usdDeposit += netAmountOriginal
+                        usdInterest += netAmountOriginal
+                    } else {
+                        krwDeposit += netAmountOriginal
+                        krwInterest += netAmountOriginal
+                    }
                 }
             }
         }
@@ -68,20 +132,20 @@ class OverallRepository(
         // 2. 종목별 통계 계산 (운용금액, 수량, 실현손익)
         val stockStatsMap = mutableMapOf<String, StockCalculation>()
         allTransactions.forEach { t ->
+            val rate = if (t.currencyCode == "USD") exchangeRate else 1.0
             if (t.type == "매수" || t.type == "매도") {
                 val calc = stockStatsMap.getOrPut(t.stockCode) { StockCalculation() }
                 if (t.type == "매수") {
-                    val totalCost = t.amount + t.fee + t.tax
+                    val totalCostKrw = (t.amount + t.fee + t.tax) * rate
                     calc.volume += t.volume
-                    calc.investedAmount += totalCost
+                    calc.investedAmount += totalCostKrw
                 } else if (t.type == "매도") {
-                    // 평균단가 기반 실현손익 계산 (이동평균법)
-                    val avgCost = if (calc.volume > 0) calc.investedAmount / calc.volume else 0.0
-                    val sellNet = t.amount - t.fee - t.tax
-                    val realized = sellNet - (avgCost * t.volume)
+                    val avgCostKrw = if (calc.volume > 0) calc.investedAmount / calc.volume else 0.0
+                    val sellNetKrw = (t.amount - t.fee - t.tax) * rate
+                    val realizedKrw = sellNetKrw - (avgCostKrw * t.volume)
 
-                    calc.realizedProfit += realized
-                    calc.investedAmount -= (avgCost * t.volume)
+                    calc.realizedProfit += realizedKrw
+                    calc.investedAmount -= (avgCostKrw * t.volume)
                     calc.volume -= t.volume
 
                     if (calc.volume <= 0.000001) {
@@ -89,13 +153,13 @@ class OverallRepository(
                         calc.investedAmount = 0.0
                     }
                 }
-            } else if (t.typeDetail.contains("배당금")) {
+            } else if (t.typeDetail.contains("배당금") || t.typeDetail.contains("분배금")) {
                 val calc = stockStatsMap.getOrPut(t.stockCode) { StockCalculation() }
-                calc.realizedProfit += (t.amount - t.fee - t.tax)
+                calc.realizedProfit += (t.amount - t.fee - t.tax) * rate
             }
         }
 
-        // 3. 카테고리별 합산 (분산 vs 개별)
+        // 3. 카테고리별 합산
         var distOp = 0.0; var distEval = 0.0; var distRealized = 0.0
         var indOp = 0.0; var indEval = 0.0; var indRealized = 0.0
 
@@ -105,16 +169,18 @@ class OverallRepository(
             val currentPrice = if (calc.volume > 0) {
                 fetchCurrentPrice(code, stock)
             } else 0.0
-
-            val evalAmt = currentPrice * calc.volume
+            
+            val currency = stock?.currency ?: allTransactions.find { it.stockCode == code }?.currencyCode ?: "KRW"
+            val currentRate = if (currency == "USD") exchangeRate else 1.0
+            val evalAmtKrw = (currentPrice * currentRate) * calc.volume
 
             if (portfolioCodes.contains(code)) {
                 distOp += calc.investedAmount
-                distEval += evalAmt
+                distEval += evalAmtKrw
                 distRealized += calc.realizedProfit
             } else {
                 indOp += calc.investedAmount
-                indEval += evalAmt
+                indEval += evalAmtKrw
                 indRealized += calc.realizedProfit
             }
         }
@@ -147,36 +213,40 @@ class OverallRepository(
             evaluatedAssets = distEval + indEval
         )
 
-        val depositInvStats = OverallStats(
-            title = "예금투자내역",
-            realizedProfit = depositInterestProfit,
-            evaluatedAssets = totalDeposit,
-            deposit = totalDeposit
+        val otherStats = OverallStats(
+            title = "기타내역",
+            krwDeposit = krwDeposit,
+            usdDeposit = usdDeposit,
+            krwDividend = krwDividend,
+            usdDividend = usdDividend,
+            krwInterest = krwInterest,
+            usdInterest = usdInterest,
+            evaluatedAssets = totalDepositKrw
         )
 
         val totalStats = OverallStats(
             title = "총투자내역",
-            principal = totalPrincipal,
+            principal = totalPrincipalKrw,
             operatingAmount = distOp + indOp,
             evaluatedAmount = distEval + indEval,
             evaluatedProfit = (distEval + indEval) - (distOp + indOp),
-            realizedProfit = distRealized + indRealized + depositInterestProfit,
-            deposit = totalDeposit,
-            evaluatedAssets = (distEval + indEval) + totalDeposit
+            realizedProfit = distRealized + indRealized + (krwDividend + usdDividend * exchangeRate) + (krwInterest + usdInterest * exchangeRate),
+            deposit = totalDepositKrw,
+            evaluatedAssets = (distEval + indEval) + totalDepositKrw
         )
 
-        listOf(totalStats, stockStats, distStats, indStats, depositInvStats)
+        listOf(totalStats, stockStats, distStats, indStats, otherStats)
     }
 
     private suspend fun fetchCurrentPrice(stockCode: String, stock: StockEntity?): Double {
         if (stock == null) return 0.0
         return try {
-            val updated = if (stock.currency == "KRW") {
-                naverApi.fetchDomesticStockDetails(stockCode, stock.marketType)
-            } else {
-                yahooApi.fetchOverseasStockDetails(stockCode, stock.stockName, stock.currency)
+            val updatedPrice = when {
+                stock.marketType == "METALS" -> naverApi.fetchGoldPrice()
+                stock.currency == "KRW" -> naverApi.fetchDomesticStockDetails(stockCode, stock.marketType)?.currentPrice
+                else -> yahooApi.fetchOverseasStockDetails(stockCode, stock.stockName, stock.currency)?.currentPrice
             }
-            updated?.currentPrice ?: stock.currentPrice
+            updatedPrice ?: stock.currentPrice
         } catch (e: Exception) {
             stock.currentPrice
         }

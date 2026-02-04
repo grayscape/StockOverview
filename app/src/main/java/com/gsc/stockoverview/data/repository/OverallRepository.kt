@@ -47,12 +47,18 @@ class OverallRepository(
         // 1. 예수금, 원금, 기타내역 계산
         var totalDepositKrw = 0.0
         var totalPrincipalKrw = 0.0
-        
+
+        //원화 예수금
         var krwDeposit = 0.0
+        //달러 예수금
         var usdDeposit = 0.0
+        //원화 배당금
         var krwDividend = 0.0
+        //달러 배당금
         var usdDividend = 0.0
+        //원화 이자
         var krwInterest = 0.0
+        //외화 이자
         var usdInterest = 0.0
 
         allTransactions.forEach { t ->

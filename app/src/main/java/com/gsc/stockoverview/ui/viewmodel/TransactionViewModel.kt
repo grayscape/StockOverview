@@ -129,10 +129,17 @@ class TransactionViewModel(
             amount
         }
 
-        var finalPrice = if (type == "외화매수원화출금" || type == "외화매수원화출금(미수)" || type == "외화매도원화입금") {
+        var finalType = if (type == "외화매수원화출금(미수)") {
+            "외화매수원화출금"
+        }
+        else {
+            type
+        }
+
+        var finalPrice = if (finalType == "외화매수원화출금" || finalType == "외화매수원화출금(미수)" || finalType == "외화매도원화입금") {
             // 매매일 평균 이틀 후 거래일의 실제 환율 값(매수,매도 단가)을 구한다.
             computeEffectiveFxRate(allData, account, transactionDate, amount)
-        } else if (type == "배당금외화입금") {
+        } else if (finalType == "배당금외화입금") {
             // 배당금외화입금 단가의 경우 환율 금액으로 보이며 그냥 0으로 등록
             0.0
         } else {
@@ -141,7 +148,7 @@ class TransactionViewModel(
 
         var finalVolume = quantity.toDouble()
 
-        if (type == "외화매도원화입금") {
+        if (finalType == "외화매도원화입금") {
             val related = allData.filter { it.account == account && it.transactionDate == transactionDate }
             val fxInRow = related.find { it.type == "외화매도외화출금" }
 
@@ -154,8 +161,8 @@ class TransactionViewModel(
         return TransactionEntity(
             account = account,
             tradeDate = finalTransactionDate,
-            type = TYPE_MAPPING[type] ?: type,
-            typeDetail = type,
+            type = TYPE_MAPPING[finalType] ?: finalType,
+            typeDetail = finalType,
             stockCode = context.stockCodeMap[finalTransactionName] ?: "",
             transactionName = finalTransactionName,
             price = finalPrice,
@@ -271,8 +278,8 @@ class TransactionViewModel(
         private val TYPE_MAPPING = mapOf(
             "외화예탁금이용료입금" to "이자", "예탁금이용료입금" to "이자", "해외주식매수입고" to "매수",
             "ETF/상장클래스 분배금입금" to "이자", "계좌대체출금" to "출금", "주식매도출고" to "매도",
-            "주식매수입고" to "매수", "배당금외화입금" to "이자", "배당세출금" to "세금", "해외매수원화출금" to "매수", "해외매수원화출금(미수)" to "매수",
-            "이체입금" to "입금", "해외주식매도출고" to "매도", "계좌대체입금" to "입금", "외화매도원화입금" to "매도", "외화매도원화입금(미수)" to "매도",
+            "주식매수입고" to "매수", "배당금외화입금" to "이자", "배당세출금" to "세금", "외화매수원화출금" to "매수", "외화매수원화출금(미수)" to "매수",
+            "이체입금" to "입금", "해외주식매도출고" to "매도", "계좌대체입금" to "입금", "외화매도원화입금" to "매도",
             "금현물매수입고" to "매수", "금현물보관수수료세금" to "세금", "금현물보관수수료" to "수수료", "이체송금" to "출금"
         )
         private val STOCK_CORRECTION_TYPES = listOf(

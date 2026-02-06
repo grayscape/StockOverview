@@ -19,9 +19,11 @@ import kotlinx.coroutines.launch
         TransactionEntity::class,
         StockEntity::class,
         CommonCodeEntity::class,
-        PortfolioEntity::class
+        PortfolioEntity::class,
+        AccountStatusEntity::class,
+        AccountStockStatusEntity::class
     ],
-    version = 18,
+    version = 19,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -32,6 +34,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun stockDao(): StockDao
     abstract fun commonCodeDao(): CommonCodeDao
     abstract fun portfolioDao(): PortfolioDao
+    abstract fun accountStatusDao(): AccountStatusDao
+    abstract fun accountStockStatusDao(): AccountStockStatusDao
 
     /**
      * 모든 테이블의 데이터를 삭제하여 DB를 초기화합니다.
@@ -44,6 +48,8 @@ abstract class AppDatabase : RoomDatabase() {
         stockDao().deleteAll()
         commonCodeDao().deleteAll()
         portfolioDao().deleteAll()
+        accountStatusDao().deleteAll()
+        accountStockStatusDao().deleteAll()
         
         // 기본 데이터 다시 삽입
         populateInitialData(this)

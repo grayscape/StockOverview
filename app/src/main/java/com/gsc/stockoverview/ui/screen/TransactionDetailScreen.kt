@@ -14,11 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.gsc.stockoverview.data.AppDatabase
-import com.gsc.stockoverview.data.repository.OverseasTradingLogRawRepository
-import com.gsc.stockoverview.data.repository.StockRepository
-import com.gsc.stockoverview.data.repository.TradingLogRawRepository
-import com.gsc.stockoverview.data.repository.TransactionRawRepository
-import com.gsc.stockoverview.data.repository.TransactionRepository
+import com.gsc.stockoverview.data.repository.*
 import com.gsc.stockoverview.ui.components.StockTable
 import com.gsc.stockoverview.ui.components.StockTopAppBar
 import com.gsc.stockoverview.ui.components.formatDate
@@ -39,17 +35,29 @@ fun TransactionDetailScreen(onOpenDrawer: () -> Unit) {
     val excelReader = remember { ExcelReader(context) }
 
     // Repository 및 ViewModel 설정
-    val transactionRepo = remember { TransactionRepository(database.transactionDao()) }
+    val transactionRepo = remember { 
+        TransactionRepository(
+            database.transactionDao(),
+            database.transactionRawDao(),
+            database.tradingLogRawDao(),
+            database.overseasTradingLogRawDao(),
+            database.stockDao()
+        ) 
+    }
     val transactionRawRepo = remember { TransactionRawRepository(database.transactionRawDao()) }
     val tradingLogRawRepo = remember { TradingLogRawRepository(database.tradingLogRawDao()) }
     val overseasTradingLogRawRepo = remember { OverseasTradingLogRawRepository(database.overseasTradingLogRawDao()) }
     val stockRepo = remember { StockRepository(database.stockDao()) }
+    val accountStockStatusRepo = remember { AccountStockStatusRepository(database.accountStockStatusDao()) }
+    val accountRepo = remember { AccountStatusRepository(database.accountStatusDao()) }
 
     val transactionRawViewModel: TransactionRawViewModel = viewModel(factory = TransactionRawViewModelFactory(transactionRawRepo, excelReader))
     val tradingLogRawViewModel: TradingLogRawViewModel = viewModel(factory = TradingLogRawViewModelFactory(tradingLogRawRepo, excelReader))
     val overseasTradingLogRawViewModel: OverseasTradingLogRawViewModel = viewModel(factory = OverseasTradingLogRawViewModelFactory(overseasTradingLogRawRepo, excelReader))
     val stockViewModel: StockViewModel = viewModel(factory = StockViewModelFactory(stockRepo))
-    val transactionViewModel: TransactionViewModel = viewModel(factory = TransactionViewModelFactory(transactionRepo, transactionRawRepo, tradingLogRawRepo, overseasTradingLogRawRepo, stockRepo))
+    val transactionViewModel: TransactionViewModel = viewModel(
+        factory = TransactionViewModelFactory(transactionRepo, accountStockStatusRepo, accountRepo)
+    )
 
     val excelPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()

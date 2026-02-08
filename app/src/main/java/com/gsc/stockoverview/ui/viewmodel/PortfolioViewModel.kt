@@ -3,6 +3,7 @@ package com.gsc.stockoverview.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.gsc.stockoverview.data.entity.StockEntity
+import com.gsc.stockoverview.data.repository.PortfolioItemDomainModel
 import com.gsc.stockoverview.data.repository.PortfolioRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -38,64 +39,22 @@ class PortfolioViewModel(private val repository: PortfolioRepository) : ViewMode
     val uiState: StateFlow<PortfolioUiState> = _uiState.asStateFlow()
 
     init {
-        viewModelScope.launch {
-            loadData()
-        }
+        loadData()
     }
 
     fun loadData() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             
-            val baseAmount = repository.getBaseAmount()
-            val stats = repository.getStockStats()
-            val allStocks = repository.getAllStocks()
-            
-            repository.getPortfolioItems().collectLatest { portfolioEntities ->
-                val items = portfolioEntities.map { entity ->
-                    val stock = allStocks.find { it.stockCode == entity.stockCode }
-                    val currentPrice = repository.fetchCurrentPrice(entity.stockCode) ?: stock?.currentPrice ?: 0.0
-                    val stat = stats[entity.stockCode]
-                    val vol = stat?.volume ?: 0.0
-                    val evalAmount = currentPrice * vol
-                    val targetAmt = baseAmount * (entity.targetWeight / 100.0)
-                    
-                    // 목표비중보다 높으면 음수, 낮으면 양수로 표시하기 위해 (Target - Eval) 수행
-                    val adjAmt = targetAmt - evalAmount
-                    val adjRate = if (evalAmount != 0.0) (adjAmt / evalAmount) * 100.0 else 0.0
-                    
-                    PortfolioItemUi(
-                        stockCode = entity.stockCode,
-                        stockName = stock?.stockShortName ?: stock?.stockName ?: entity.stockCode,
-                        targetWeight = entity.targetWeight,
-                        targetAmount = targetAmt,
-                        evaluationAmount = evalAmount,
-                        currentWeight = 0.0, // 아래에서 계산
-                        investedAmount = stat?.investedAmount ?: 0.0,
-                        adjustmentAmount = adjAmt,
-                        adjustmentRate = adjRate,
-                        currentPrice = currentPrice,
-                        volume = vol,
-                        currency = stock?.currency ?: "KRW"
-                    )
-                }
-                
-                val totalEval = items.sumOf { it.evaluationAmount }
-                val totalInvested = items.sumOf { it.investedAmount }
-                val totalTargetW = items.sumOf { it.targetWeight }
-                
-                val itemsWithWeight = items.map { 
-                    it.copy(currentWeight = if (totalEval != 0.0) (it.evaluationAmount / totalEval) * 100.0 else 0.0)
-                }
-                
+            repository.getPortfolioDomainModel().collectLatest { domainModel ->
                 _uiState.update { 
                     it.copy(
-                        items = itemsWithWeight,
-                        totalBaseAmount = baseAmount,
-                        totalEvaluationAmount = totalEval,
-                        totalInvestedAmount = totalInvested,
-                        totalTargetWeight = totalTargetW,
-                        allStocks = allStocks,
+                        items = domainModel.items.map { item -> item.toUiModel() },
+                        totalBaseAmount = domainModel.totalBaseAmount,
+                        totalEvaluationAmount = domainModel.totalEvaluationAmount,
+                        totalInvestedAmount = domainModel.totalInvestedAmount,
+                        totalTargetWeight = domainModel.totalTargetWeight,
+                        allStocks = domainModel.allStocks,
                         isLoading = false
                     )
                 }
@@ -119,5 +78,22 @@ class PortfolioViewModel(private val repository: PortfolioRepository) : ViewMode
         viewModelScope.launch {
             repository.deleteStock(stockCode)
         }
+    }
+
+    private fun PortfolioItemDomainModel.toUiModel(): PortfolioItemUi {
+        return PortfolioItemUi(
+            stockCode = stockCode,
+            stockName = stockName,
+            targetWeight = targetWeight,
+            targetAmount = targetAmount,
+            evaluationAmount = evaluationAmount,
+            currentWeight = currentWeight,
+            investedAmount = investedAmount,
+            adjustmentAmount = adjustmentAmount,
+            adjustmentRate = adjustmentRate,
+            currentPrice = currentPrice,
+            volume = volume,
+            currency = currency
+        )
     }
 }

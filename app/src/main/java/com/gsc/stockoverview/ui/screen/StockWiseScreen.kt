@@ -13,7 +13,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.gsc.stockoverview.data.AppDatabase
 import com.gsc.stockoverview.data.api.NaverStockApiService
@@ -40,7 +39,13 @@ fun StockWiseScreen(onOpenDrawer: () -> Unit) {
     
     val viewModel: StockWiseViewModel = viewModel(
         factory = StockWiseViewModelFactory(
-            transactionRepository = TransactionRepository(database.transactionDao()),
+            transactionRepository = TransactionRepository(
+                database.transactionDao(),
+                database.transactionRawDao(),
+                database.tradingLogRawDao(),
+                database.overseasTradingLogRawDao(),
+                database.stockDao()
+            ),
             naverApi = NaverStockApiService(),
             yahooApi = YahooStockApiService()
         )

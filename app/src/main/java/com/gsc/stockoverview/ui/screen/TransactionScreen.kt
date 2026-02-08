@@ -10,17 +10,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.gsc.stockoverview.data.AppDatabase
+import com.gsc.stockoverview.data.repository.AccountStatusRepository
+import com.gsc.stockoverview.data.repository.AccountStockStatusRepository
 import com.gsc.stockoverview.data.repository.CommonCodeRepository
-import com.gsc.stockoverview.data.repository.OverseasTradingLogRawRepository
-import com.gsc.stockoverview.data.repository.StockRepository
-import com.gsc.stockoverview.data.repository.TradingLogRawRepository
-import com.gsc.stockoverview.data.repository.TransactionRawRepository
 import com.gsc.stockoverview.data.repository.TransactionRepository
 import com.gsc.stockoverview.ui.components.StockTable
 import com.gsc.stockoverview.ui.components.StockTopAppBar
 import com.gsc.stockoverview.ui.components.formatDate
 import com.gsc.stockoverview.ui.components.formatDouble
-import com.gsc.stockoverview.ui.components.formatLong
 import com.gsc.stockoverview.ui.components.formatStockName
 import com.gsc.stockoverview.ui.viewmodel.CommonCodeViewModel
 import com.gsc.stockoverview.ui.viewmodel.CommonCodeViewModelFactory
@@ -39,11 +36,15 @@ fun TransactionScreen(onOpenDrawer: () -> Unit) {
 
     val viewModel: TransactionViewModel = viewModel(
         factory = TransactionViewModelFactory(
-            repository = TransactionRepository(database.transactionDao()),
-            transactionRawRepository = TransactionRawRepository(database.transactionRawDao()),
-            tradingLogRawRepository = TradingLogRawRepository(database.tradingLogRawDao()),
-            overseasTradingLogRawRepository = OverseasTradingLogRawRepository(database.overseasTradingLogRawDao()),
-            stockRepository = StockRepository(database.stockDao())
+            repository = TransactionRepository(
+                database.transactionDao(),
+                database.transactionRawDao(),
+                database.tradingLogRawDao(),
+                database.overseasTradingLogRawDao(),
+                database.stockDao()
+            ),
+            accountStockStatusRepository = AccountStockStatusRepository(database.accountStockStatusDao()),
+            accountRepository = AccountStatusRepository(database.accountStatusDao())
         )
     )
 

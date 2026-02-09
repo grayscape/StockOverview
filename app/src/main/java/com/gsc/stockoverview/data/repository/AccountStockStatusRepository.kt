@@ -34,6 +34,9 @@ class AccountStockStatusRepository(
                 var totalRealizedProfitLoss = 0.0
                 var totalWeightedYield = 0.0
                 var totalSaleCost = 0.0
+                
+                // 해당 종목의 통화코드 (첫 번째 거래 내역에서 가져오거나 기본값 설정)
+                val currencyCode = stockTransactions.firstOrNull()?.currencyCode ?: "KRW"
 
                 // 날짜와 순서에 따라 정렬하여 순차 계산
                 stockTransactions.sortedWith(compareBy<TransactionEntity> { it.tradeDate }.thenBy { it.transactionOrder })
@@ -72,7 +75,8 @@ class AccountStockStatusRepository(
                     averagePurchasePrice = avgPurchasePrice,
                     investmentAmount = investmentAmount,
                     realizedProfitLoss = totalRealizedProfitLoss,
-                    realizedProfitLossRate = realizedPnLRate
+                    realizedProfitLossRate = realizedPnLRate,
+                    currencyCode = currencyCode
                 )
             }
             .filter { it.quantity != 0.0 || it.realizedProfitLoss != 0.0 }

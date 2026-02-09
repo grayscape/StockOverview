@@ -23,7 +23,7 @@ import kotlinx.coroutines.launch
         AccountStatusEntity::class,
         AccountStockStatusEntity::class
     ],
-    version = 19,
+    version = 20,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

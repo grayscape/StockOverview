@@ -18,5 +18,7 @@ data class AccountStockStatusEntity(
     @ColumnInfo(name = "realized_profit_loss")
     val realizedProfitLoss: Double, // 실현손익
     @ColumnInfo(name = "realized_profit_loss_rate")
-    val realizedProfitLossRate: Float // 실현손익률
+    val realizedProfitLossRate: Float, // 실현손익률
+    @ColumnInfo(name = "currency_code")
+    val currencyCode: String // 통화코드
 )

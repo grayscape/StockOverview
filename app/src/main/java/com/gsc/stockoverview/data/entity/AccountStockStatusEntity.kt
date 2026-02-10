@@ -11,10 +11,10 @@ data class AccountStockStatusEntity(
     val stockCode: String, // 종목코드
     @ColumnInfo(name = "quantity")
     val quantity: Double, // 수량
-    @ColumnInfo(name = "average_purchase_price")
-    val averagePurchasePrice: Double, // 매입평균액
-    @ColumnInfo(name = "investment_amount")
-    val investmentAmount: Double, // 투자금액
+    @ColumnInfo(name = "average_price")
+    val averagePrice: Double, // 평균단가
+    @ColumnInfo(name = "purchase_amount")
+    val purchaseAmount: Double, // 매입금액
     @ColumnInfo(name = "profit_loss_amount")
     val profitLossAmount: Double, // 손익금액
     @ColumnInfo(name = "profit_loss_rate")

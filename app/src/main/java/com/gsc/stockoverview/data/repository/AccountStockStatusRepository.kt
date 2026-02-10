@@ -63,8 +63,8 @@ class AccountStockStatusRepository(
                         }
                     }
 
-                val avgPurchasePrice = if (currentQuantity > 0) totalCost / currentQuantity else 0.0
-                val investmentAmount = totalCost
+                val avgPrice = if (currentQuantity > 0) totalCost / currentQuantity else 0.0
+                val purchaseAmount = totalCost
                 // 전체 수익률은 개별 매도 건의 yield를 매도 원가(saleCost) 기준으로 가중 평균하여 계산
                 val profitLossRate = if (totalSaleCost > 0) (totalWeightedYield / totalSaleCost).toFloat() else 0f
 
@@ -72,8 +72,8 @@ class AccountStockStatusRepository(
                     account = account,
                     stockCode = stockCode,
                     quantity = currentQuantity,
-                    averagePurchasePrice = avgPurchasePrice,
-                    investmentAmount = investmentAmount,
+                    averagePrice = avgPrice,
+                    purchaseAmount = purchaseAmount,
                     profitLossAmount = totalProfitLossAmount,
                     profitLossRate = profitLossRate,
                     currencyCode = currencyCode

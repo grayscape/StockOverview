@@ -24,6 +24,10 @@ data class AccountStatusEntity(
     val usdProfitLossAmount: Double, // 달러손익금액
     @ColumnInfo(name = "usd_profit_loss_rate")
     val usdProfitLossRate: Float, // 달러손익률
+    @ColumnInfo(name = "krw_purchase_amount")
+    val krwPurchaseAmount: Double, // 원화매입금액
+    @ColumnInfo(name = "usd_purchase_amount")
+    val usdPurchaseAmount: Double, // 달러매입금액
     @ColumnInfo(name = "krw_deposit")
     val krwDeposit: Double, // 원화예수금
     @ColumnInfo(name = "usd_deposit")

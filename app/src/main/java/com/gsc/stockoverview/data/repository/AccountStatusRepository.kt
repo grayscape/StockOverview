@@ -65,8 +65,10 @@ class AccountStatusRepository(
             object {
                 val krwProfitLossAmount = krwStocks.sumOf { it.profitLossAmount }
                 val krwSumProfitLossRate = krwStocks.sumOf { it.profitLossRate.toDouble() }.toFloat()
+                val krwPurchaseAmount = krwStocks.sumOf { it.purchaseAmount }
                 val usdProfitLossAmount = usdStocks.sumOf { it.profitLossAmount }
                 val usdSumProfitLossRate = usdStocks.sumOf { it.profitLossRate.toDouble() }.toFloat()
+                val usdPurchaseAmount = usdStocks.sumOf { it.purchaseAmount }
             }
         }
 
@@ -92,6 +94,8 @@ class AccountStatusRepository(
                 krwProfitLossRate = metrics?.krwSumProfitLossRate ?: 0f,
                 usdProfitLossAmount = metrics?.usdProfitLossAmount ?: 0.0,
                 usdProfitLossRate = metrics?.usdSumProfitLossRate ?: 0f,
+                krwPurchaseAmount = metrics?.krwPurchaseAmount ?: 0.0,
+                usdPurchaseAmount = metrics?.usdPurchaseAmount ?: 0.0,
                 krwDeposit = krwDeposit,
                 usdDeposit = usdDeposit
             )
@@ -107,6 +111,9 @@ class AccountStatusRepository(
             val totalKrwProfitLossRate = accountStatusEntities.sumOf { it.krwProfitLossRate.toDouble() }.toFloat()
             val totalUsdProfitLossAmount = accountStatusEntities.sumOf { it.usdProfitLossAmount }
             val totalUsdProfitLossRate = accountStatusEntities.sumOf { it.usdProfitLossRate.toDouble() }.toFloat()
+
+            val totalKrwPurchaseAmount = accountStatusEntities.sumOf { it.krwPurchaseAmount }
+            val totalUsdPurchaseAmount = accountStatusEntities.sumOf { it.usdPurchaseAmount }
             
             val totalKrwDeposit = accountStatusEntities.sumOf { it.krwDeposit }
             val totalUsdDeposit = accountStatusEntities.sumOf { it.usdDeposit }
@@ -120,6 +127,8 @@ class AccountStatusRepository(
                 krwProfitLossRate = totalKrwProfitLossRate,
                 usdProfitLossAmount = totalUsdProfitLossAmount,
                 usdProfitLossRate = totalUsdProfitLossRate,
+                krwPurchaseAmount = totalKrwPurchaseAmount,
+                usdPurchaseAmount = totalUsdPurchaseAmount,
                 krwDeposit = totalKrwDeposit,
                 usdDeposit = totalUsdDeposit
             )

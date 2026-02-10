@@ -16,10 +16,14 @@ data class AccountStatusEntity(
     val totalWithdrawal: Double, // 총 출금액
     @ColumnInfo(name = "principal")
     val principal: Double, // 원금 (입금 - 출금)
-    @ColumnInfo(name = "realized_profit_loss")
-    val realizedProfitLoss: Double, // 실현손익
-    @ColumnInfo(name = "realized_profit_loss_rate")
-    val realizedProfitLossRate: Float, // 실현손익률
+    @ColumnInfo(name = "krw_profit_loss_amount")
+    val krwProfitLossAmount: Double, // 원화손익금액
+    @ColumnInfo(name = "krw_profit_loss_rate")
+    val krwProfitLossRate: Float, // 원화손익률
+    @ColumnInfo(name = "usd_profit_loss_amount")
+    val usdProfitLossAmount: Double, // 달러손익금액
+    @ColumnInfo(name = "usd_profit_loss_rate")
+    val usdProfitLossRate: Float, // 달러손익률
     @ColumnInfo(name = "krw_deposit")
     val krwDeposit: Double, // 원화예수금
     @ColumnInfo(name = "usd_deposit")

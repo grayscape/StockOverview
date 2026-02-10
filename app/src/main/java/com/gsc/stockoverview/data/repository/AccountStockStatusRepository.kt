@@ -31,7 +31,7 @@ class AccountStockStatusRepository(
                 val (account, stockCode) = key
                 var currentQuantity = 0.0
                 var totalCost = 0.0
-                var totalRealizedProfitLoss = 0.0
+                var totalProfitLossAmount = 0.0
                 var totalWeightedYield = 0.0
                 var totalSaleCost = 0.0
                 
@@ -55,7 +55,7 @@ class AccountStockStatusRepository(
                                 currentQuantity -= tx.volume
                                 
                                 // TransactionEntity의 profitLoss와 yield를 직접 사용
-                                totalRealizedProfitLoss += tx.profitLoss
+                                totalProfitLossAmount += tx.profitLoss
                                 val saleCost = tx.amount - tx.profitLoss
                                 totalWeightedYield += tx.yield * saleCost
                                 totalSaleCost += saleCost
@@ -65,8 +65,8 @@ class AccountStockStatusRepository(
 
                 val avgPurchasePrice = if (currentQuantity > 0) totalCost / currentQuantity else 0.0
                 val investmentAmount = totalCost
-                // 전체 실현수익률은 개별 매도 건의 yield를 매도 원가(saleCost) 기준으로 가중 평균하여 계산
-                val realizedPnLRate = if (totalSaleCost > 0) (totalWeightedYield / totalSaleCost).toFloat() else 0f
+                // 전체 수익률은 개별 매도 건의 yield를 매도 원가(saleCost) 기준으로 가중 평균하여 계산
+                val profitLossRate = if (totalSaleCost > 0) (totalWeightedYield / totalSaleCost).toFloat() else 0f
 
                 AccountStockStatusEntity(
                     account = account,
@@ -74,12 +74,12 @@ class AccountStockStatusRepository(
                     quantity = currentQuantity,
                     averagePurchasePrice = avgPurchasePrice,
                     investmentAmount = investmentAmount,
-                    realizedProfitLoss = totalRealizedProfitLoss,
-                    realizedProfitLossRate = realizedPnLRate,
+                    profitLossAmount = totalProfitLossAmount,
+                    profitLossRate = profitLossRate,
                     currencyCode = currencyCode
                 )
             }
-            .filter { it.quantity != 0.0 || it.realizedProfitLoss != 0.0 }
+            .filter { it.quantity != 0.0 || it.profitLossAmount != 0.0 }
 
         deleteAll()
         insertAccountStockStatusList(stockStatusList)

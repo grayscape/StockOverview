@@ -24,7 +24,7 @@ class AccountStatusRepository(
     }
 
     /**
-     * 거래 내역과 계산된 종목 현황을 바탕으로 계좌별 상태(원금, 실현손익, 예수금 등)를 계산하여 저장합니다.
+     * 거래 내역과 계산된 종목 현황을 바탕으로 계좌별 상태(원금, 손익금액, 예수금 등)를 계산하여 저장합니다.
      */
     suspend fun refreshAccountStatus(
         transactions: List<TransactionEntity>,
@@ -32,9 +32,7 @@ class AccountStatusRepository(
     ) {
         if (transactions.isEmpty()) return
 
-        // 1. 계좌별 입금, 출금액 계산 (원화 기준 - 현재는 KRW/USD 구분 없이 합산하거나 KRW 위주로 처리할 수 있으나,
-        // 일반적으로 '원금'은 투자한 총 금액을 의미하므로 원화 환산이 필요할 수 있음.
-        // 여기서는 일단 계좌별로 합산)
+        // 1. 계좌별 입금, 출금액 계산
         val statsByAccount = transactions.groupBy { it.account }.mapValues { (_, txs) ->
             val deposit = txs.filter { it.type == "입금" }.sumOf { it.amount }
             val withdrawal = txs.filter { it.type == "출금" }.sumOf { it.amount }
@@ -45,7 +43,7 @@ class AccountStatusRepository(
             }
         }
 
-        // 2. 계좌별 통화별 예수금 변동액 계산 (입금, 출금, 이자, 매수, 매도, 세금)
+        // 2. 계좌별 통화별 예수금 변동액 계산
         val depositByAccountAndCurrency = transactions
             .groupBy { it.account to (it.currencyCode ?: "KRW") }
             .mapValues { (_, txs) ->
@@ -60,11 +58,15 @@ class AccountStatusRepository(
                 }
             }
 
-        // 3. 계좌별 종목 현황 데이터 합산 (실현손익, 총 투자금액, 실현손익률 합계)
+        // 3. 계좌별 종목 현황 데이터 합산 (원화/달러 분리)
         val stockMetricsByAccount = stockStatusList.groupBy { it.account }.mapValues { (_, list) ->
+            val krwStocks = list.filter { it.currencyCode == "KRW" }
+            val usdStocks = list.filter { it.currencyCode == "USD" }
             object {
-                val totalRealizedPnL = list.sumOf { it.realizedProfitLoss }
-                val sumRealizedPnLRate = list.sumOf { it.realizedProfitLossRate.toDouble() }.toFloat()
+                val krwProfitLossAmount = krwStocks.sumOf { it.profitLossAmount }
+                val krwSumProfitLossRate = krwStocks.sumOf { it.profitLossRate.toDouble() }.toFloat()
+                val usdProfitLossAmount = usdStocks.sumOf { it.profitLossAmount }
+                val usdSumProfitLossRate = usdStocks.sumOf { it.profitLossRate.toDouble() }.toFloat()
             }
         }
 
@@ -80,16 +82,16 @@ class AccountStatusRepository(
             val usdDeposit = depositByAccountAndCurrency[account to "USD"] ?: 0.0
 
             val metrics = stockMetricsByAccount[account]
-            val realizedPnL = metrics?.totalRealizedPnL ?: 0.0
-            val realizedPnLRate = metrics?.sumRealizedPnLRate ?: 0f
-
+            
             AccountStatusEntity(
                 account = account,
                 totalDeposit = totalDeposit,
                 totalWithdrawal = totalWithdrawal,
                 principal = principal,
-                realizedProfitLoss = realizedPnL,
-                realizedProfitLossRate = realizedPnLRate,
+                krwProfitLossAmount = metrics?.krwProfitLossAmount ?: 0.0,
+                krwProfitLossRate = metrics?.krwSumProfitLossRate ?: 0f,
+                usdProfitLossAmount = metrics?.usdProfitLossAmount ?: 0.0,
+                usdProfitLossRate = metrics?.usdSumProfitLossRate ?: 0f,
                 krwDeposit = krwDeposit,
                 usdDeposit = usdDeposit
             )
@@ -97,22 +99,27 @@ class AccountStatusRepository(
 
         // 전체 합계 데이터 추가
         if (accountStatusEntities.isNotEmpty()) {
-            // "전체" 계산 시 입금, 출금은 typeDetail이 "이체입금", "이체송금"인 거래만 합산하여 계산
             val totalDeposit = transactions.filter { it.typeDetail == "이체입금" }.sumOf { it.amount }
             val totalWithdrawal = transactions.filter { it.typeDetail == "이체송금" }.sumOf { it.amount }
             val totalPrincipal = totalDeposit - totalWithdrawal
-            val totalRealizedPnL = accountStatusEntities.sumOf { it.realizedProfitLoss }
+            
+            val totalKrwProfitLossAmount = accountStatusEntities.sumOf { it.krwProfitLossAmount }
+            val totalKrwProfitLossRate = accountStatusEntities.sumOf { it.krwProfitLossRate.toDouble() }.toFloat()
+            val totalUsdProfitLossAmount = accountStatusEntities.sumOf { it.usdProfitLossAmount }
+            val totalUsdProfitLossRate = accountStatusEntities.sumOf { it.usdProfitLossRate.toDouble() }.toFloat()
+            
             val totalKrwDeposit = accountStatusEntities.sumOf { it.krwDeposit }
             val totalUsdDeposit = accountStatusEntities.sumOf { it.usdDeposit }
-            val totalRealizedPnLRate = accountStatusEntities.sumOf { it.realizedProfitLossRate.toDouble() }.toFloat()
 
             val totalEntity = AccountStatusEntity(
                 account = "전체",
                 totalDeposit = totalDeposit,
                 totalWithdrawal = totalWithdrawal,
                 principal = totalPrincipal,
-                realizedProfitLoss = totalRealizedPnL,
-                realizedProfitLossRate = totalRealizedPnLRate,
+                krwProfitLossAmount = totalKrwProfitLossAmount,
+                krwProfitLossRate = totalKrwProfitLossRate,
+                usdProfitLossAmount = totalUsdProfitLossAmount,
+                usdProfitLossRate = totalUsdProfitLossRate,
                 krwDeposit = totalKrwDeposit,
                 usdDeposit = totalUsdDeposit
             )

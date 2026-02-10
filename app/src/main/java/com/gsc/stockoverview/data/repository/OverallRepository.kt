@@ -17,7 +17,7 @@ data class OverallStats(
     val operatingAmount: Double = 0.0,   // 운용금액 (현재 보유 종목의 매수 원금 합계)
     val evaluatedAmount: Double = 0.0,   // 평가금액 (현재가 * 수량)
     val evaluatedProfit: Double = 0.0,   // 평가수익 (평가금액 - 운용금액)
-    val realizedProfit: Double = 0.0,    // 실현손익 (매도손익 + 배당 + 이자)
+    val profitLossAmount: Double = 0.0,    // 손익금액 (매도손익 + 배당 + 이자)
     val deposit: Double = 0.0,           // 예수금 (원화 환산 합계)
     
     // 기타내역용 추가 필드
@@ -135,7 +135,7 @@ class OverallRepository(
             }
         }
 
-        // 2. 종목별 통계 계산 (운용금액, 수량, 실현손익)
+        // 2. 종목별 통계 계산 (운용금액, 수량, 손익금액)
         val stockStatsMap = mutableMapOf<String, StockCalculation>()
         allTransactions.forEach { t ->
             val rate = if (t.currencyCode == "USD") exchangeRate else 1.0
@@ -150,7 +150,7 @@ class OverallRepository(
                     val sellNetKrw = (t.amount - t.fee - t.tax) * rate
                     val realizedKrw = sellNetKrw - (avgCostKrw * t.volume)
 
-                    calc.realizedProfit += realizedKrw
+                    calc.profitLossAmount += realizedKrw
                     calc.investedAmount -= (avgCostKrw * t.volume)
                     calc.volume -= t.volume
 
@@ -161,13 +161,13 @@ class OverallRepository(
                 }
             } else if (t.typeDetail.contains("배당금") || t.typeDetail.contains("분배금")) {
                 val calc = stockStatsMap.getOrPut(t.stockCode) { StockCalculation() }
-                calc.realizedProfit += (t.amount - t.fee - t.tax) * rate
+                calc.profitLossAmount += (t.amount - t.fee - t.tax) * rate
             }
         }
 
         // 3. 카테고리별 합산
-        var distOp = 0.0; var distEval = 0.0; var distRealized = 0.0
-        var indOp = 0.0; var indEval = 0.0; var indRealized = 0.0
+        var distOp = 0.0; var distEval = 0.0; var distProfitLoss = 0.0
+        var indOp = 0.0; var indEval = 0.0; var indProfitLoss = 0.0
 
         stockStatsMap.forEach { (code, calc) ->
             if (code.isBlank()) return@forEach
@@ -183,11 +183,11 @@ class OverallRepository(
             if (portfolioCodes.contains(code)) {
                 distOp += calc.investedAmount
                 distEval += evalAmtKrw
-                distRealized += calc.realizedProfit
+                distProfitLoss += calc.profitLossAmount
             } else {
                 indOp += calc.investedAmount
                 indEval += evalAmtKrw
-                indRealized += calc.realizedProfit
+                indProfitLoss += calc.profitLossAmount
             }
         }
 
@@ -197,7 +197,7 @@ class OverallRepository(
             operatingAmount = distOp,
             evaluatedAmount = distEval,
             evaluatedProfit = distEval - distOp,
-            realizedProfit = distRealized,
+            profitLossAmount = distProfitLoss,
             evaluatedAssets = distEval
         )
 
@@ -206,7 +206,7 @@ class OverallRepository(
             operatingAmount = indOp,
             evaluatedAmount = indEval,
             evaluatedProfit = indEval - indOp,
-            realizedProfit = indRealized,
+            profitLossAmount = indProfitLoss,
             evaluatedAssets = indEval
         )
 
@@ -215,7 +215,7 @@ class OverallRepository(
             operatingAmount = distOp + indOp,
             evaluatedAmount = distEval + indEval,
             evaluatedProfit = (distEval + indEval) - (distOp + indOp),
-            realizedProfit = distRealized + indRealized,
+            profitLossAmount = distProfitLoss + indProfitLoss,
             evaluatedAssets = distEval + indEval
         )
 
@@ -236,7 +236,7 @@ class OverallRepository(
             operatingAmount = distOp + indOp,
             evaluatedAmount = distEval + indEval,
             evaluatedProfit = (distEval + indEval) - (distOp + indOp),
-            realizedProfit = distRealized + indRealized + (krwDividend + usdDividend * exchangeRate) + (krwInterest + usdInterest * exchangeRate),
+            profitLossAmount = distProfitLoss + indProfitLoss + (krwDividend + usdDividend * exchangeRate) + (krwInterest + usdInterest * exchangeRate),
             deposit = totalDepositKrw,
             evaluatedAssets = (distEval + indEval) + totalDepositKrw
         )
@@ -261,6 +261,6 @@ class OverallRepository(
     private class StockCalculation {
         var volume: Double = 0.0
         var investedAmount: Double = 0.0
-        var realizedProfit: Double = 0.0
+        var profitLossAmount: Double = 0.0
     }
 }

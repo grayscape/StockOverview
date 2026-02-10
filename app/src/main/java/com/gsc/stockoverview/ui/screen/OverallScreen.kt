@@ -121,12 +121,12 @@ fun OverallStatsCard(stats: OverallStats) {
                 }
                 StatRow("평가수익", profitFormat.format(stats.evaluatedProfit), valueColor = profitColor)
                 
-                val realizedColor = when {
-                    stats.realizedProfit > 0 -> Color.Red
-                    stats.realizedProfit < 0 -> Color.Blue
+                val profitLossColor = when {
+                    stats.profitLossAmount > 0 -> Color.Red
+                    stats.profitLossAmount < 0 -> Color.Blue
                     else -> Color.Unspecified
                 }
-                StatRow("실현손익", profitFormat.format(stats.realizedProfit), valueColor = realizedColor)
+                StatRow("손익금액", profitFormat.format(stats.profitLossAmount), valueColor = profitLossColor)
                 
                 if (stats.title == "총투자내역") {
                     StatRow("예수금", numberFormat.format(stats.deposit))

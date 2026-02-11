@@ -198,15 +198,31 @@ class TransactionRepository(
 
     private fun calculateMatchScore(targetTokens: Set<String>, candidateTokens: Set<String>): Double {
         if (targetTokens.isEmpty()) return 0.0
-        val intersection = targetTokens.intersect(candidateTokens)
-        val baseScore = intersection.size.toDouble() / targetTokens.size
-        var bonusScore = 0.0
+
+        var totalScore = 0.0
+
         for (targetToken in targetTokens) {
+            var maxTokenScore = 0.0
             for (candidateToken in candidateTokens) {
-                if (candidateToken.contains(targetToken, true)) bonusScore += 0.1
+                val score = when {
+                    // 1. 완전 일치
+                    targetToken == candidateToken -> 1.0
+
+                    // 2. 부분 일치 (길이 비율 반영)
+                    targetToken.contains(candidateToken) || candidateToken.contains(targetToken) -> {
+                        val shorter = minOf(targetToken.length, candidateToken.length).toDouble()
+                        val longer = maxOf(targetToken.length, candidateToken.length).toDouble()
+                        // 단순히 0.1을 더하는 게 아니라, 얼마나 겹치는지 비율을 계산 (최대 0.8까지)
+                        (shorter / longer).coerceAtMost(0.8)
+                    }
+                    else -> 0.0
+                }
+                if (score > maxTokenScore) maxTokenScore = score
             }
+            totalScore += maxTokenScore
         }
-        return (baseScore + bonusScore).coerceAtMost(1.0)
+
+        return totalScore / targetTokens.size
     }
 
     private data class CorrectionContext(

@@ -121,18 +121,18 @@ fun StockWiseHeader() {
             .padding(vertical = 8.dp, horizontal = 12.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            HeaderText("종목명", Modifier.weight(0.8f), textAlign = TextAlign.Start)
-            HeaderText("평균단가", Modifier.weight(0.8f))
-            HeaderText("평가금액", Modifier.weight(1.2f))
-            HeaderText("평가손익", Modifier.weight(1.2f))
-            HeaderText("손익금액", Modifier.weight(1.2f))
+            HeaderText("종목명", Modifier.weight(0.8f))
+            HeaderText("평균단가", Modifier.weight(0.8f), textAlign = TextAlign.End)
+            HeaderText("평가금액", Modifier.weight(1.2f), textAlign = TextAlign.End)
+            HeaderText("평가손익", Modifier.weight(1.2f), textAlign = TextAlign.End)
+            HeaderText("손익금액", Modifier.weight(1.2f), textAlign = TextAlign.End)
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
-            HeaderText("보유량", Modifier.weight(0.8f), textAlign = TextAlign.Start)
-            HeaderText("현재시세", Modifier.weight(0.8f))
-            HeaderText("매입금액", Modifier.weight(1.2f))
-            HeaderText("평가손익률", Modifier.weight(1.2f))
-            HeaderText("손익률", Modifier.weight(1.2f))
+            HeaderText("보유량", Modifier.weight(0.8f))
+            HeaderText("현재시세", Modifier.weight(0.8f), textAlign = TextAlign.End)
+            HeaderText("매입금액", Modifier.weight(1.2f), textAlign = TextAlign.End)
+            HeaderText("평가손익률", Modifier.weight(1.2f), textAlign = TextAlign.End)
+            HeaderText("손익률", Modifier.weight(1.2f), textAlign = TextAlign.End)
         }
     }
 }
@@ -176,7 +176,7 @@ fun StockWiseRow(item: StockWiseItem) {
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
-                textAlign = TextAlign.Start
+                textAlign = TextAlign.Center
             )
             StockValueCell(
                 value = item.averagePrice,
@@ -213,7 +213,7 @@ fun StockWiseRow(item: StockWiseItem) {
                 modifier = Modifier.weight(0.8f).padding(top = 2.dp),
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.Gray,
-                textAlign = TextAlign.Start
+                textAlign = TextAlign.Center
             )
             StockValueCell(
                 value = item.currentPrice,

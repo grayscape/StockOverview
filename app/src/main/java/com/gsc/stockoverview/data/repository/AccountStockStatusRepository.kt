@@ -44,7 +44,8 @@ class AccountStockStatusRepository(
                         when (tx.type) {
                             "매수" -> {
                                 currentQuantity += tx.volume
-                                totalCost += (tx.amount - tx.fee - tx.tax)
+                                //증권 프로그램과 매수 금액을 동일하게 표시하기 위해 수수료 차감을 하지 않는다.
+                                totalCost += tx.amount
                             }
                             "매도" -> {
                                 if (currentQuantity > 0) {

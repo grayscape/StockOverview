@@ -19,6 +19,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import java.text.DecimalFormat
 import java.util.Locale
+import kotlin.math.roundToInt
+import kotlin.math.roundToLong
 
 @Composable
 fun <T> StockTable(
@@ -93,7 +95,34 @@ fun TableCell(text: String, isHeader: Boolean = false, width: Dp = 85.dp) {
 fun formatLong(value: Long) = String.format(Locale.getDefault(), "%,d", value)
 
 private val decimalFormat = DecimalFormat("#,###.##")
+private val integerFormat = DecimalFormat("#,###")
+private val precisionFormat = DecimalFormat("#,###.00")
+
 fun formatDouble(value: Double): String = decimalFormat.format(value)
+
+/**
+ * 통화별 포맷팅 규칙 적용
+ */
+fun formatCurrency(value: Double, currency: String, isRate: Boolean = false): String {
+    return if (currency == "KRW") {
+        if (isRate) {
+            // 수익률, 평가손익률: 소수 2자리 반올림
+            precisionFormat.format((value * 100.0).roundToInt() / 100.0)
+        } else {
+            // 일반 금액: 소수점 없음
+            integerFormat.format(value.roundToLong())
+        }
+    } else if (currency == "USD") {
+        if (isRate) {
+            precisionFormat.format((value * 100.0).roundToInt() / 100.0)
+        } else {
+            // USD 금액: 소수 2자리
+            precisionFormat.format((value * 100.0).roundToInt() / 100.0)
+        }
+    } else {
+        decimalFormat.format(value)
+    }
+}
 
 fun formatStockName(name: String) = if (name.length > 6) name.take(6) + ".." else name
 

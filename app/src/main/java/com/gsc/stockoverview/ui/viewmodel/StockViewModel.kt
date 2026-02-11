@@ -88,7 +88,7 @@ class StockViewModel(
             "슈어소프트테크" to "슈어",
             "KIWOOM 200TR" to "키움",
             "에코프로" to "에코",
-            "ACE KRX금현물" to "KRX금",
+            "ACE KRX금현물" to "금ETF",
             "TIGER CD금리투자KIS(합성)" to "T-CD",
             "ACE 미국달러SOFR금리(합성)" to "SOFR",
             "TIGER 미국채10년선물" to "미10",

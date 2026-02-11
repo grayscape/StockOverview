@@ -105,14 +105,14 @@ abstract class AppDatabase : RoomDatabase() {
             // 3. 기본 포트폴리오 삽입
             val portfolioDao = database.portfolioDao()
             val defaultPortfolio = listOf(
-                PortfolioEntity("379800", 20.0),
-                PortfolioEntity("283580", 10.0),
-                PortfolioEntity("294400", 10.0),
-                PortfolioEntity("305080", 6.0),
-                PortfolioEntity("456880", 6.0),
-                PortfolioEntity("365780", 12.0),
-                PortfolioEntity("411060", 16.0),
-                PortfolioEntity("357870", 20.0)
+                PortfolioEntity("379800", 20.0), //S&P500
+                PortfolioEntity("283580", 10.0), //차이나
+                PortfolioEntity("294400", 10.0), //키움
+                PortfolioEntity("305080", 6.0), //미10
+                PortfolioEntity("456880", 6.0), //SOFR
+                PortfolioEntity("365780", 12.0), //국10
+                PortfolioEntity("411060", 16.0), //금ETF
+                PortfolioEntity("357870", 20.0) //T-CD
             )
             portfolioDao.insertAll(defaultPortfolio)
         }

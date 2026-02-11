@@ -13,13 +13,16 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.gsc.stockoverview.data.AppDatabase
 import com.gsc.stockoverview.data.api.NaverStockApiService
 import com.gsc.stockoverview.data.api.YahooStockApiService
+import com.gsc.stockoverview.data.repository.AccountStockStatusRepository
 import com.gsc.stockoverview.data.repository.CommonCodeRepository
 import com.gsc.stockoverview.data.repository.TransactionRepository
 import com.gsc.stockoverview.ui.components.StockTopAppBar
+import com.gsc.stockoverview.ui.components.formatCurrency
 import com.gsc.stockoverview.ui.components.formatDouble
 import com.gsc.stockoverview.ui.viewmodel.CommonCodeViewModel
 import com.gsc.stockoverview.ui.viewmodel.CommonCodeViewModelFactory
@@ -46,6 +49,8 @@ fun StockWiseScreen(onOpenDrawer: () -> Unit) {
                 database.overseasTradingLogRawDao(),
                 database.stockDao()
             ),
+            accountStockStatusRepository = AccountStockStatusRepository(database.accountStockStatusDao()),
+            stockDao = database.stockDao(),
             naverApi = NaverStockApiService(),
             yahooApi = YahooStockApiService()
         )
@@ -116,92 +121,122 @@ fun StockWiseHeader() {
             .padding(vertical = 8.dp, horizontal = 12.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            HeaderText("종목명", Modifier.weight(1.5f))
-            HeaderText("평가손익", Modifier.weight(1.2f))
+            HeaderText("종목명", Modifier.weight(0.8f), textAlign = TextAlign.Start)
+            HeaderText("평균단가", Modifier.weight(0.8f))
             HeaderText("평가금액", Modifier.weight(1.2f))
-            HeaderText("현재시세", Modifier.weight(1f))
+            HeaderText("평가손익", Modifier.weight(1.2f))
+            HeaderText("손익금액", Modifier.weight(1.2f))
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
-            HeaderText("보유수량", Modifier.weight(1.5f))
-            HeaderText("손익률", Modifier.weight(1.2f))
+            HeaderText("보유량", Modifier.weight(0.8f), textAlign = TextAlign.Start)
+            HeaderText("현재시세", Modifier.weight(0.8f))
             HeaderText("매입금액", Modifier.weight(1.2f))
-            HeaderText("매입평균", Modifier.weight(1f))
+            HeaderText("평가손익률", Modifier.weight(1.2f))
+            HeaderText("손익률", Modifier.weight(1.2f))
         }
     }
 }
 
 @Composable
-fun RowScope.HeaderText(text: String, modifier: Modifier) {
+fun HeaderText(text: String, modifier: Modifier, textAlign: TextAlign = TextAlign.End) {
     Text(
         text = text,
         modifier = modifier,
         style = MaterialTheme.typography.labelSmall,
         fontWeight = FontWeight.Bold,
-        textAlign = TextAlign.End,
+        textAlign = textAlign,
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
 }
 
 @Composable
 fun StockWiseRow(item: StockWiseItem) {
-    val profitColor = when {
+    val evalProfitColor = when {
         item.evaluationProfit > 0 -> Color.Red
         item.evaluationProfit < 0 -> Color.Blue
+        else -> MaterialTheme.colorScheme.onSurface
+    }
+    
+    val profitLossColor = when {
+        item.profitLossAmount > 0 -> Color.Red
+        item.profitLossAmount < 0 -> Color.Blue
         else -> MaterialTheme.colorScheme.onSurface
     }
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 10.dp, horizontal = 12.dp)
+            .padding(vertical = 8.dp, horizontal = 12.dp)
     ) {
-        // 첫 번째 줄: 종목명, 평가손익, 평가금액, 현재시세
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        // 첫 번째 줄: 종목명, 평균단가, 평가금액, 평가손익, 손익금액
+        Row(verticalAlignment = Alignment.Top) {
             Text(
                 text = item.stockName,
-                modifier = Modifier.weight(1.5f),
-                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.weight(0.8f).padding(top = 2.dp),
+                style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Bold,
-                maxLines = 1
+                maxLines = 1,
+                textAlign = TextAlign.Start
             )
-            ValueText(
-                text = formatDouble(item.evaluationProfit),
-                modifier = Modifier.weight(1.2f),
-                color = profitColor
+            StockValueCell(
+                value = item.averagePrice,
+                currency = item.currency,
+                exchangeRate = item.exchangeRate,
+                modifier = Modifier.weight(0.8f)
             )
-            ValueText(
-                text = formatDouble(item.evaluationAmount),
+            StockValueCell(
+                value = item.evaluationAmount,
+                currency = item.currency,
+                exchangeRate = item.exchangeRate,
                 modifier = Modifier.weight(1.2f)
             )
-            ValueText(
-                text = formatDouble(item.currentPrice),
-                modifier = Modifier.weight(1f)
+            StockValueCell(
+                value = item.evaluationProfit,
+                currency = item.currency,
+                exchangeRate = item.exchangeRate,
+                modifier = Modifier.weight(1.2f),
+                color = evalProfitColor
+            )
+            StockValueCell(
+                value = item.profitLossAmount,
+                currency = item.currency,
+                exchangeRate = item.exchangeRate,
+                modifier = Modifier.weight(1.2f),
+                color = profitLossColor
             )
         }
-        Spacer(modifier = Modifier.height(4.dp))
-        // 두 번째 줄: 보유수량, 손익률, 매입금액, 매입평균
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Spacer(modifier = Modifier.height(6.dp))
+        // 두 번째 줄: 보유량, 현재시세, 매입금액, 평가손익률, 손익률
+        Row(verticalAlignment = Alignment.Top) {
             Text(
                 text = formatDouble(item.holdVolume),
-                modifier = Modifier.weight(1.5f),
+                modifier = Modifier.weight(0.8f).padding(top = 2.dp),
                 style = MaterialTheme.typography.bodySmall,
                 color = Color.Gray,
                 textAlign = TextAlign.Start
             )
+            StockValueCell(
+                value = item.currentPrice,
+                currency = item.currency,
+                exchangeRate = item.exchangeRate,
+                modifier = Modifier.weight(0.8f)
+            )
+            StockValueCell(
+                value = item.purchaseAmount,
+                currency = item.currency,
+                exchangeRate = item.exchangeRate,
+                modifier = Modifier.weight(1.2f)
+            )
             ValueText(
-                text = "${formatDouble(item.yield)}%",
-                modifier = Modifier.weight(1.2f),
-                color = profitColor,
+                text = "${formatCurrency(item.evaluationProfitRate, item.currency, true)}%",
+                modifier = Modifier.weight(1.2f).padding(top = 2.dp),
+                color = evalProfitColor,
                 style = MaterialTheme.typography.bodySmall
             )
             ValueText(
-                text = formatDouble(item.buyAmount),
-                modifier = Modifier.weight(1.2f),
-                style = MaterialTheme.typography.bodySmall
-            )
-            ValueText(
-                text = formatDouble(item.buyAverage),
-                modifier = Modifier.weight(1f),
+                text = "${formatCurrency(item.profitLossRate, item.currency, true)}%",
+                modifier = Modifier.weight(1.2f).padding(top = 2.dp),
+                color = profitLossColor,
                 style = MaterialTheme.typography.bodySmall
             )
         }
@@ -209,18 +244,47 @@ fun StockWiseRow(item: StockWiseItem) {
 }
 
 @Composable
-fun RowScope.ValueText(
+fun StockValueCell(
+    value: Double,
+    currency: String,
+    exchangeRate: Double,
+    modifier: Modifier,
+    color: Color = MaterialTheme.colorScheme.onSurface
+) {
+    Column(modifier = modifier, horizontalAlignment = Alignment.End) {
+        Text(
+            text = formatCurrency(value, currency),
+            style = MaterialTheme.typography.bodySmall,
+            color = color,
+            textAlign = TextAlign.End,
+            maxLines = 1
+        )
+        if (currency == "USD") {
+            Text(
+                text = formatCurrency(value * exchangeRate, "KRW"),
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                color = color.copy(alpha = 0.6f),
+                textAlign = TextAlign.End,
+                maxLines = 1
+            )
+        }
+    }
+}
+
+@Composable
+fun ValueText(
     text: String,
     modifier: Modifier,
     color: Color = MaterialTheme.colorScheme.onSurface,
-    style: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.bodyMedium
+    style: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.bodyMedium,
+    textAlign: TextAlign = TextAlign.End
 ) {
     Text(
         text = text,
         modifier = modifier,
         style = style,
         color = color,
-        textAlign = TextAlign.End,
+        textAlign = textAlign,
         maxLines = 1
     )
 }

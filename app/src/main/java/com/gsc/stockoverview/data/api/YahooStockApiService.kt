@@ -46,6 +46,11 @@ class YahooStockApiService {
                     
                     if (meta != null) {
                         val currentPrice = meta.optDouble("regularMarketPrice", 0.0)
+                        val previousClose = meta.optDouble("previousClose", 0.0)
+                        val changeRate = if (previousClose > 0) {
+                            ((currentPrice - previousClose) / previousClose) * 100
+                        } else 0.0
+                        
                         val currencyResult = meta.optString("currency", currency)
                         val market = meta.optString("fullExchangeName", "OVERSEAS")
                         
@@ -54,6 +59,7 @@ class YahooStockApiService {
                             stockName = stockName, // 엑셀에서 가져온 종목명을 사용
                             stockType = "OVERSEAS",
                             currentPrice = currentPrice,
+                            changeRate = changeRate,
                             marketType = market,
                             currency = currencyResult
                         )

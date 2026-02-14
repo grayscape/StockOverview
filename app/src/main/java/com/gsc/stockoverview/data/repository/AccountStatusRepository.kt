@@ -24,7 +24,7 @@ class AccountStatusRepository(
     }
 
     /**
-     * 거래 내역과 계산된 종목 현황을 바탕으로 계좌별 상태(원금, 손익금액, 예수금 등)를 계산하여 저장합니다.
+     * 거래 내역과 계산된 종목 현황을 바탕으로 계좌별 상태(원금, 실현손익, 예수금 등)를 계산하여 저장합니다.
      */
     suspend fun refreshAccountStatus(
         transactions: List<TransactionEntity>,
@@ -63,11 +63,11 @@ class AccountStatusRepository(
             val krwStocks = list.filter { it.currencyCode == "KRW" }
             val usdStocks = list.filter { it.currencyCode == "USD" }
             object {
-                val krwProfitLossAmount = krwStocks.sumOf { it.profitLossAmount }
-                val krwSumProfitLossRate = krwStocks.sumOf { it.profitLossRate.toDouble() }.toFloat()
+                val krwRealizedProfitLoss = krwStocks.sumOf { it.realizedProfitLoss }
+                val krwSumRealizedProfitLossRate = krwStocks.sumOf { it.realizedProfitLossRate.toDouble() }.toFloat()
                 val krwPurchaseAmount = krwStocks.sumOf { it.purchaseAmount }
-                val usdProfitLossAmount = usdStocks.sumOf { it.profitLossAmount }
-                val usdSumProfitLossRate = usdStocks.sumOf { it.profitLossRate.toDouble() }.toFloat()
+                val usdRealizedProfitLoss = usdStocks.sumOf { it.realizedProfitLoss }
+                val usdSumRealizedProfitLossRate = usdStocks.sumOf { it.realizedProfitLossRate.toDouble() }.toFloat()
                 val usdPurchaseAmount = usdStocks.sumOf { it.purchaseAmount }
             }
         }
@@ -90,10 +90,10 @@ class AccountStatusRepository(
                 totalDeposit = totalDeposit,
                 totalWithdrawal = totalWithdrawal,
                 principal = principal,
-                krwProfitLossAmount = metrics?.krwProfitLossAmount ?: 0.0,
-                krwProfitLossRate = metrics?.krwSumProfitLossRate ?: 0f,
-                usdProfitLossAmount = metrics?.usdProfitLossAmount ?: 0.0,
-                usdProfitLossRate = metrics?.usdSumProfitLossRate ?: 0f,
+                krwRealizedProfitLoss = metrics?.krwRealizedProfitLoss ?: 0.0,
+                krwRealizedProfitLossRate = metrics?.krwSumRealizedProfitLossRate ?: 0f,
+                usdRealizedProfitLoss = metrics?.usdRealizedProfitLoss ?: 0.0,
+                usdRealizedProfitLossRate = metrics?.usdSumRealizedProfitLossRate ?: 0f,
                 krwPurchaseAmount = metrics?.krwPurchaseAmount ?: 0.0,
                 usdPurchaseAmount = metrics?.usdPurchaseAmount ?: 0.0,
                 krwDeposit = krwDeposit,
@@ -107,10 +107,10 @@ class AccountStatusRepository(
             val totalWithdrawal = transactions.filter { it.typeDetail == "이체송금" }.sumOf { it.amount }
             val totalPrincipal = totalDeposit - totalWithdrawal
             
-            val totalKrwProfitLossAmount = accountStatusEntities.sumOf { it.krwProfitLossAmount }
-            val totalKrwProfitLossRate = accountStatusEntities.sumOf { it.krwProfitLossRate.toDouble() }.toFloat()
-            val totalUsdProfitLossAmount = accountStatusEntities.sumOf { it.usdProfitLossAmount }
-            val totalUsdProfitLossRate = accountStatusEntities.sumOf { it.usdProfitLossRate.toDouble() }.toFloat()
+            val totalKrwRealizedProfitLoss = accountStatusEntities.sumOf { it.krwRealizedProfitLoss }
+            val totalKrwRealizedProfitLossRate = accountStatusEntities.sumOf { it.krwRealizedProfitLossRate.toDouble() }.toFloat()
+            val totalUsdRealizedProfitLoss = accountStatusEntities.sumOf { it.usdRealizedProfitLoss }
+            val totalUsdRealizedProfitLossRate = accountStatusEntities.sumOf { it.usdRealizedProfitLossRate.toDouble() }.toFloat()
 
             val totalKrwPurchaseAmount = accountStatusEntities.sumOf { it.krwPurchaseAmount }
             val totalUsdPurchaseAmount = accountStatusEntities.sumOf { it.usdPurchaseAmount }
@@ -123,10 +123,10 @@ class AccountStatusRepository(
                 totalDeposit = totalDeposit,
                 totalWithdrawal = totalWithdrawal,
                 principal = totalPrincipal,
-                krwProfitLossAmount = totalKrwProfitLossAmount,
-                krwProfitLossRate = totalKrwProfitLossRate,
-                usdProfitLossAmount = totalUsdProfitLossAmount,
-                usdProfitLossRate = totalUsdProfitLossRate,
+                krwRealizedProfitLoss = totalKrwRealizedProfitLoss,
+                krwRealizedProfitLossRate = totalKrwRealizedProfitLossRate,
+                usdRealizedProfitLoss = totalUsdRealizedProfitLoss,
+                usdRealizedProfitLossRate = totalUsdRealizedProfitLossRate,
                 krwPurchaseAmount = totalKrwPurchaseAmount,
                 usdPurchaseAmount = totalUsdPurchaseAmount,
                 krwDeposit = totalKrwDeposit,

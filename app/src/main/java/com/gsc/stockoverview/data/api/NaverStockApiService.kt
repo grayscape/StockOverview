@@ -172,12 +172,14 @@ class NaverStockApiService {
                             val data = datas.getJSONObject(0)
                             val name = data.getString("nm")
                             val currentPrice = data.optDouble("nv", 0.0)
+                            val changeRate = data.optDouble("cr", 0.0)
                             
                             return StockEntity(
                                 stockCode = stockCode,
                                 stockName = name,
                                 stockType = "KOREA",
                                 currentPrice = currentPrice,
+                                changeRate = changeRate,
                                 marketType = marketType,
                                 currency = "KRW"
                             )

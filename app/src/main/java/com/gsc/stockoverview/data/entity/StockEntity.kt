@@ -22,6 +22,9 @@ data class StockEntity(
     @ColumnInfo(name = "current_price")
     val currentPrice: Double,       // 현재가
 
+    @ColumnInfo(name = "change_rate")
+    val changeRate: Double = 0.0,   // 등락률 (추가)
+
     @ColumnInfo(name = "market_type")
     val marketType: String,         // 시장구분
 

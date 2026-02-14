@@ -15,10 +15,10 @@ data class AccountStockStatusEntity(
     val averagePrice: Double, // 평균단가
     @ColumnInfo(name = "purchase_amount")
     val purchaseAmount: Double, // 매입금액
-    @ColumnInfo(name = "profit_loss_amount")
-    val profitLossAmount: Double, // 손익금액
-    @ColumnInfo(name = "profit_loss_rate")
-    val profitLossRate: Float, // 손익률
+    @ColumnInfo(name = "realized_profit_loss")
+    val realizedProfitLoss: Double, // 실현손익
+    @ColumnInfo(name = "realized_profit_loss_rate")
+    val realizedProfitLossRate: Float, // 실현손익률
     @ColumnInfo(name = "currency_code")
     val currencyCode: String // 통화코드
 )

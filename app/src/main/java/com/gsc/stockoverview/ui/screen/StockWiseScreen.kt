@@ -125,14 +125,28 @@ fun StockWiseHeader() {
             HeaderText("평균단가", Modifier.weight(0.8f), textAlign = TextAlign.End)
             HeaderText("평가금액", Modifier.weight(1.2f), textAlign = TextAlign.End)
             HeaderText("평가손익", Modifier.weight(1.2f), textAlign = TextAlign.End)
-            HeaderText("손익금액", Modifier.weight(1.2f), textAlign = TextAlign.End)
+            HeaderText("실현손익", Modifier.weight(1.2f), textAlign = TextAlign.End)
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             HeaderText("보유량", Modifier.weight(0.8f))
             HeaderText("현재시세", Modifier.weight(0.8f), textAlign = TextAlign.End)
             HeaderText("매입금액", Modifier.weight(1.2f), textAlign = TextAlign.End)
             HeaderText("평가손익률", Modifier.weight(1.2f), textAlign = TextAlign.End)
-            HeaderText("손익률", Modifier.weight(1.2f), textAlign = TextAlign.End)
+            HeaderText("실현손익률", Modifier.weight(1.2f), textAlign = TextAlign.End)
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            HeaderText("비중", Modifier.weight(0.8f))
+            HeaderText("등락률", Modifier.weight(0.8f), textAlign = TextAlign.End)
+            HeaderText("총손익", Modifier.weight(1.2f), textAlign = TextAlign.End)
+            HeaderText("총손익률", Modifier.weight(1.2f), textAlign = TextAlign.End)
+            HeaderText("예상수수료", Modifier.weight(1.2f), textAlign = TextAlign.End)
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            HeaderText("직전매수일", Modifier.weight(0.8f))
+            HeaderText("직전매수량", Modifier.weight(0.8f), textAlign = TextAlign.End)
+            HeaderText("직전매수액", Modifier.weight(1.2f), textAlign = TextAlign.End)
+            HeaderText("직전손익", Modifier.weight(1.2f), textAlign = TextAlign.End)
+            HeaderText("직전수익률", Modifier.weight(1.2f), textAlign = TextAlign.End)
         }
     }
 }
@@ -158,8 +172,20 @@ fun StockWiseRow(item: StockWiseItem) {
     }
     
     val profitLossColor = when {
-        item.profitLossAmount > 0 -> Color.Red
-        item.profitLossAmount < 0 -> Color.Blue
+        item.realizedProfitLoss > 0 -> Color.Red
+        item.realizedProfitLoss < 0 -> Color.Blue
+        else -> MaterialTheme.colorScheme.onSurface
+    }
+
+    val totalProfitColor = when {
+        item.totalProfitLoss > 0 -> Color.Red
+        item.totalProfitLoss < 0 -> Color.Blue
+        else -> MaterialTheme.colorScheme.onSurface
+    }
+
+    val changeRateColor = when {
+        item.changeRate > 0 -> Color.Red
+        item.changeRate < 0 -> Color.Blue
         else -> MaterialTheme.colorScheme.onSurface
     }
 
@@ -168,7 +194,7 @@ fun StockWiseRow(item: StockWiseItem) {
             .fillMaxWidth()
             .padding(vertical = 8.dp, horizontal = 12.dp)
     ) {
-        // 첫 번째 줄: 종목명, 평균단가, 평가금액, 평가손익, 손익금액
+        // 첫 번째 줄: 종목명, 평균단가, 평가금액, 평가손익, 실현손익
         Row(verticalAlignment = Alignment.Top) {
             Text(
                 text = item.stockName,
@@ -198,7 +224,7 @@ fun StockWiseRow(item: StockWiseItem) {
                 color = evalProfitColor
             )
             StockValueCell(
-                value = item.profitLossAmount,
+                value = item.realizedProfitLoss,
                 currency = item.currency,
                 exchangeRate = item.exchangeRate,
                 modifier = Modifier.weight(1.2f),
@@ -206,7 +232,7 @@ fun StockWiseRow(item: StockWiseItem) {
             )
         }
         Spacer(modifier = Modifier.height(6.dp))
-        // 두 번째 줄: 보유량, 현재시세, 매입금액, 평가손익률, 손익률
+        // 두 번째 줄: 보유량, 현재시세, 매입금액, 평가손익률, 실현손익률
         Row(verticalAlignment = Alignment.Top) {
             Text(
                 text = formatDouble(item.holdVolume),
@@ -228,16 +254,92 @@ fun StockWiseRow(item: StockWiseItem) {
                 modifier = Modifier.weight(1.2f)
             )
             ValueText(
-                text = "${formatCurrency(item.evaluationProfitRate, item.currency, true)}%",
+                text = "${formatDouble(item.evaluationProfitRate)}%",
                 modifier = Modifier.weight(1.2f).padding(top = 2.dp),
                 color = evalProfitColor,
                 style = MaterialTheme.typography.bodySmall
             )
             ValueText(
-                text = "${formatCurrency(item.profitLossRate, item.currency, true)}%",
+                text = "${formatDouble(item.realizedProfitLossRate)}%",
                 modifier = Modifier.weight(1.2f).padding(top = 2.dp),
                 color = profitLossColor,
                 style = MaterialTheme.typography.bodySmall
+            )
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        // 세 번째 줄: 비중, 등락률, 총손익, 총손익률, 예상수수료
+        Row(verticalAlignment = Alignment.Top) {
+            ValueText(
+                text = "${formatDouble(item.weight)}%",
+                modifier = Modifier.weight(0.8f).padding(top = 2.dp),
+                style = MaterialTheme.typography.bodySmall,
+                textAlign = TextAlign.Center,
+                color = Color.Gray
+            )
+            ValueText(
+                text = "${formatDouble(item.changeRate)}%",
+                modifier = Modifier.weight(0.8f).padding(top = 2.dp),
+                color = changeRateColor,
+                style = MaterialTheme.typography.bodySmall
+            )
+            StockValueCell(
+                value = item.totalProfitLoss,
+                currency = item.currency,
+                exchangeRate = item.exchangeRate,
+                modifier = Modifier.weight(1.2f),
+                color = totalProfitColor
+            )
+            ValueText(
+                text = "${formatDouble(item.totalProfitLossRate)}%",
+                modifier = Modifier.weight(1.2f).padding(top = 2.dp),
+                color = totalProfitColor,
+                style = MaterialTheme.typography.bodySmall
+            )
+            StockValueCell(
+                value = item.estimatedFee,
+                currency = item.currency,
+                exchangeRate = item.exchangeRate,
+                modifier = Modifier.weight(1.2f),
+                color = Color.Gray
+            )
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        // 네 번째 줄: 직전매수일, 직전매수량, 직전매수액, 직전손익, 직전수익률
+        Row(verticalAlignment = Alignment.Top) {
+            val lastBuyDateText = if (item.lastBuyDate.contains("-")) item.lastBuyDate.substringAfter("-") else item.lastBuyDate
+            Text(
+                text = lastBuyDateText,
+                modifier = Modifier.weight(0.8f).padding(top = 2.dp),
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                color = Color.Gray,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = formatDouble(item.lastBuyVolume),
+                modifier = Modifier.weight(0.8f).padding(top = 2.dp),
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                color = Color.Gray,
+                textAlign = TextAlign.End
+            )
+            StockValueCell(
+                value = item.lastBuyAmount,
+                currency = item.currency,
+                exchangeRate = item.exchangeRate,
+                modifier = Modifier.weight(1.2f),
+                color = Color.Gray
+            )
+            StockValueCell(
+                value = item.lastBuyProfitLoss,
+                currency = item.currency,
+                exchangeRate = item.exchangeRate,
+                modifier = Modifier.weight(1.2f),
+                color = if (item.lastBuyProfitLoss > 0) Color.Red else if (item.lastBuyProfitLoss < 0) Color.Blue else Color.Gray
+            )
+            ValueText(
+                text = "${formatDouble(item.lastBuyProfitLossRate)}%",
+                modifier = Modifier.weight(1.2f).padding(top = 2.dp),
+                color = if (item.lastBuyProfitLossRate > 0) Color.Red else if (item.lastBuyProfitLossRate < 0) Color.Blue else Color.Gray,
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp)
             )
         }
     }
